@@ -73,6 +73,7 @@ train_pars = dict(batch_size = 64, # Dataset batch size
                   out_dir = "../data/PIPNet_2021_10_13_lin/", # Output directory
                   change_factor = {70: 100., 90: 10.}, # Checkpoints where
                   device = "cuda", # Device on which to run the model
+                  monitor_end = "\n", # End of line character for monitoring
                  )
 
 model_pars = dict(input_dim = 1,

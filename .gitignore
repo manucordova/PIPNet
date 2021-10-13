@@ -132,3 +132,5 @@ dmypy.json
 1D/figures/
 
 *.DS_Store
+*.out
+*.log

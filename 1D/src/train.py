@@ -33,7 +33,7 @@ def evaluate(data_generator, net, loss, train_pars, i_chk):
         pp = "    Validation batch {: 4d}: ".format(val_batch + 1)
         pp += "loss = {: 1.4e}, ".format(val_losses[-1])
         pp += "mean loss = {: 1.4e}...".format(np.mean(val_losses))
-        print(pp, end="\r")
+        print(pp, end=train_pars["monitor_end"])
 
         if (val_batch + 1) >= train_pars["n_eval"]:
             break
@@ -108,7 +108,7 @@ def train(dataset, net, opt, loss, sch, train_pars):
         pp += "loss = {: 1.4e}, ".format(losses[-1])
         pp += "mean loss = {: 1.4e}, ".format(np.mean(losses))
         pp += "lr = {: 1.4e}...".format(lrs[-1])
-        print(pp, end="\r")
+        print(pp, end=train_pars["monitor_end"])
 
         # End of epoch
         if (batch + 1) % train_pars["checkpoint"] == 0:
