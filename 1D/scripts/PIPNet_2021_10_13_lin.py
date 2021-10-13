@@ -51,7 +51,7 @@ data_pars = dict(
                  mas_phase = 0.1, # Random phase range for MAS spectra
                  peakwise_phase = True, # Whether the phase should be peak-wise or spectrum-wise
                  encode_imag = False, # Encode the imaginary part of the MAS spectra
-                 nw = 16, # Number of MAS rates
+                 nw = 8, # Number of MAS rates
                  mas_w_range = [30000, 100000], # MAS rate range
                  random_mas = False,
                  encode_w = False, # Encode the MAS rate of the spectra
@@ -65,10 +65,10 @@ data_pars = dict(
                  wr_inv = False # Encode inverse of MAS rate instead of MAS rate
                 )
 
-train_pars = dict(batch_size = 64, # Dataset batch size
+train_pars = dict(batch_size = 16, # Dataset batch size
                   num_workers = 20, # Number of parallel processes to generate data
-                  checkpoint = 1000, # Perform evaluation after that many batches
-                  n_eval = 100, # Number of batches in the evaluation
+                  checkpoint = 5000, # Perform evaluation after that many batches
+                  n_eval = 500, # Number of batches in the evaluation
                   max_checkpoints = 100, # Maximum number of checkpoints before finishing training
                   out_dir = "../data/PIPNet_2021_10_13_lin/", # Output directory
                   change_factor = {70: 100., 90: 10.}, # Checkpoints where
