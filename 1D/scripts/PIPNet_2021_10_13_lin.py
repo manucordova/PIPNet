@@ -67,8 +67,8 @@ data_pars = dict(
 
 train_pars = dict(batch_size = 16, # Dataset batch size
                   num_workers = 20, # Number of parallel processes to generate data
-                  checkpoint = 5000, # Perform evaluation after that many batches
-                  n_eval = 500, # Number of batches in the evaluation
+                  checkpoint = 1000, # Perform evaluation after that many batches
+                  n_eval = 100, # Number of batches in the evaluation
                   max_checkpoints = 100, # Maximum number of checkpoints before finishing training
                   out_dir = "../data/PIPNet_2021_10_13_lin/", # Output directory
                   change_factor = {70: 100., 90: 10.}, # Checkpoints where
