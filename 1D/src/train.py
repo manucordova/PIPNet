@@ -22,7 +22,7 @@ def evaluate(data_generator, net, loss, train_pars, i_chk):
         y = y.to(train_pars["device"])
 
         # Forward pass
-        y_pred, _, _ = net(X)
+        y_pred, y_std, _ = net(X)
 
         # Compute loss
         l = loss(y_pred, y)
@@ -44,6 +44,8 @@ def evaluate(data_generator, net, loss, train_pars, i_chk):
     np.save(train_pars["out_dir"] + f"checkpoint_{i_chk}_in.npy", X.cpu().numpy())
     np.save(train_pars["out_dir"] + f"checkpoint_{i_chk}_trg.npy", y.cpu().numpy())
     np.save(train_pars["out_dir"] + f"checkpoint_{i_chk}_pred.npy", y_pred.detach().cpu().numpy())
+    if net.is_ensemble:
+        np.save(train_pars["out_dir"] + f"checkpoint_{i_chk}_std.npy", y_std.detach().cpu().numpy())
 
     return val_losses
 

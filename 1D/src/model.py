@@ -98,6 +98,8 @@ class ConvLSTM(nn.Module):
         if not len(kernel_size) == len(hidden_dim) == num_layers:
             raise ValueError('Inconsistent list length.')
 
+        self.is_ensemble = False
+
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.batch_input = batch_input
@@ -206,6 +208,75 @@ class ConvLSTM(nn.Module):
         if not isinstance(param, list):
             param = [param] * num_layers
         return param
+
+
+
+class ConvLSTMEnsemble(nn.Module):
+
+    """
+    Parameters:
+        input_dim: Number of channels in input
+        hidden_dim: Number of hidden channels
+        kernel_size: Size of kernel in convolutions
+        num_layers: Number of LSTM layers stacked on each other
+        bias: Bias or no bias in Convolution
+        return_all_layers: Return the list of computations for all layers
+        Note: Will do same padding.
+    Input:
+        A tensor of size B, T, C, H, W or T, B, C, H, W
+    Output:
+        A tuple of two lists of length num_layers (or length 1 if return_all_layers is False).
+            0 - layer_output_list is the list of lists of length T of each output
+            1 - last_state_list is the list of last states
+                    each element of the list is a tuple (h, c) for hidden state and memory
+    Example:
+        >> x = torch.rand((32, 10, 64, 128, 128))
+        >> convlstm = ConvLSTM(64, 16, 3, 1, True, True, False)
+        >> _, last_states = convlstm(x)
+        >> h = last_states[0][0]  # 0 for layer index, 0 for h index
+    """
+
+    def __init__(self, n_models, input_dim, hidden_dim, kernel_size, num_layers,
+                 final_kernel_size=1, batch_input=1, bias=True, final_bias=True, return_all_layers=False, final_act="sigmoid"):
+        super(ConvLSTMEnsemble, self).__init__()
+
+        self.is_ensemble = True
+
+        models = []
+        for i in range(n_models):
+            models.append(ConvLSTM(input_dim, hidden_dim, kernel_size, num_layers,
+                                   final_kernel_size=final_kernel_size,
+                                   batch_input=batch_input,
+                                   bias=bias,
+                                   final_bias=final_bias,
+                                   return_all_layers=return_all_layers,
+                                   final_act=final_act))
+
+        self.models = nn.ModuleList(models)
+
+        return
+
+    def forward(self, input_tensor, hidden_state=None):
+        """
+        Parameters
+        ----------
+        input_tensor: todo
+            4-D Tensor of shape (b, t, c, s)
+        hidden_state: todo
+            None. todo implement stateful
+        Returns
+        -------
+        last_state_list, layer_output
+        """
+
+        ys = []
+        for net in self.models:
+            y, _, _ = net(input_tensor)
+            ys.append(torch.unsqueeze(y.clone(), 0))
+
+        ys = torch.cat(ys, dim=0)
+
+        return torch.mean(ys, dim=0), torch.std(ys, dim=0), ys
 
 
 
