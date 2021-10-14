@@ -22,10 +22,14 @@ def evaluate(data_generator, net, loss, train_pars, i_chk):
         y = y.to(train_pars["device"])
 
         # Forward pass
-        y_pred, y_std, _ = net(X)
+        y_pred, y_std, ys_pred = net(X)
 
         # Compute loss
-        l = loss(y_pred, y)
+        if not net.is_ensemble or train_pars["avg_models"]:
+            l = loss(y_pred, y)
+        else:
+            ys = torch.cat([torch.unsqueeze(y.clone(), 0) for _ in range(ys_pred.shape[0])])
+            l = loss(ys_pred, ys)
 
         # Update monitoring lists
         val_losses.append(float(l.detach()))
@@ -88,13 +92,17 @@ def train(dataset, net, opt, loss, sch, train_pars):
         opt.zero_grad()
 
         # Forward pass
-        y_pred, _, _ = net(X)
+        y_pred, y_std, ys_pred = net(X)
 
         if batch == 0:
             assert(y_pred.shape == y.shape)
 
         # Compute loss
-        l = loss(y_pred, y)
+        if not net.is_ensemble or train_pars["avg_models"]:
+            l = loss(y_pred, y)
+        else:
+            ys = torch.cat([torch.unsqueeze(y.clone(), 0) for _ in range(ys_pred.shape[0])])
+            l = loss(ys_pred, ys)
 
         # Backward pass
         l.backward()

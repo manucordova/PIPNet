@@ -72,6 +72,7 @@ train_pars = dict(batch_size = 16, # Dataset batch size
                   max_checkpoints = 100, # Maximum number of checkpoints before finishing training
                   out_dir = "../data/Ensemble_PIPNet_2021_10_14_lin/", # Output directory
                   change_factor = {50: 100., 90: 10.}, # Checkpoints where
+                  avg_models = False,
                   device = "cuda",
                   monitor_end = "\n"
                  )
