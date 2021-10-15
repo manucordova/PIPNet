@@ -88,6 +88,7 @@ model_pars = dict(n_models = 15,
                   final_bias = True,
                   return_all_layers = False,
                   final_act = "linear",
+                  noise = 1.e-4,
                  )
 
 if not os.path.exists(train_pars["out_dir"]):

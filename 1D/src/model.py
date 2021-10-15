@@ -89,7 +89,7 @@ class ConvLSTM(nn.Module):
     """
 
     def __init__(self, input_dim, hidden_dim, kernel_size, num_layers,
-                 final_kernel_size=1, batch_input=1, bias=True, final_bias=True, return_all_layers=False, final_act="sigmoid"):
+                 final_kernel_size=1, batch_input=1, bias=True, final_bias=True, return_all_layers=False, final_act="sigmoid", noise=0.):
         super(ConvLSTM, self).__init__()
 
         # Make sure that both `kernel_size` and `hidden_dim` are lists having len == num_layers
@@ -99,6 +99,7 @@ class ConvLSTM(nn.Module):
             raise ValueError('Inconsistent list length.')
 
         self.is_ensemble = False
+        self.noise = noise
 
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
@@ -171,6 +172,8 @@ class ConvLSTM(nn.Module):
                 cur_layer_input.append(torch.cat(tmp_input, dim=2))
 
         cur_layer_input = torch.cat(cur_layer_input, dim=1)
+        if self.noise > 0.:
+            cur_layer_input += torch.randn_like(cur_layer_input) * self.noise
         seq_len = cur_layer_input.size(1)
 
         for layer_idx in range(self.num_layers):
@@ -237,10 +240,11 @@ class ConvLSTMEnsemble(nn.Module):
     """
 
     def __init__(self, n_models, input_dim, hidden_dim, kernel_size, num_layers,
-                 final_kernel_size=1, batch_input=1, bias=True, final_bias=True, return_all_layers=False, final_act="sigmoid"):
+                 final_kernel_size=1, batch_input=1, bias=True, final_bias=True, return_all_layers=False, final_act="sigmoid", noise=0.):
         super(ConvLSTMEnsemble, self).__init__()
 
         self.is_ensemble = True
+        self.noise = noise
 
         models = []
         for i in range(n_models):
@@ -271,7 +275,11 @@ class ConvLSTMEnsemble(nn.Module):
 
         ys = []
         for net in self.models:
-            y, _, _ = net(input_tensor)
+            if self.noise > 0.:
+                X = input_tensor.clone() + torch.randn_like(input_tensor) * self.noise
+                y, _, _ = net(X)
+            else:
+                y, _, _ = net(input_tensor)
             ys.append(torch.unsqueeze(y.clone(), 0))
 
         ys = torch.cat(ys, dim=0)
