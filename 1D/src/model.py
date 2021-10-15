@@ -246,10 +246,24 @@ class ConvLSTMEnsemble(nn.Module):
         self.is_ensemble = True
         self.noise = noise
 
+        self.multiscale_ks = isinstance(kernel_size[0], list)
+        self.multiscale_fks = isinstance(final_kernel_size, list)
+
         models = []
         for i in range(n_models):
-            models.append(ConvLSTM(input_dim, hidden_dim, kernel_size, num_layers,
-                                   final_kernel_size=final_kernel_size,
+
+            if self.multiscale_ks:
+                ks = kernel_size[i]
+            else:
+                ks = kernel_size
+
+            if self.multiscale_fks:
+                fks = final_kernel_size[i]
+            else:
+                fks = final_kernel_size
+
+            models.append(ConvLSTM(input_dim, hidden_dim, ks, num_layers,
+                                   final_kernel_size=fks,
                                    batch_input=batch_input,
                                    bias=bias,
                                    final_bias=final_bias,
