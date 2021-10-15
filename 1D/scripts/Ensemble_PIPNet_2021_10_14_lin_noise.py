@@ -57,7 +57,7 @@ data_pars = dict(
                  encode_w = False, # Encode the MAS rate of the spectra
 
                  # Post-processing parameters
-                 noise = 1.e-4, # Noise level
+                 noise = 0., # Noise level
                  smooth_end_len = 10, # Smooth ends of spectra
                  scale_iso = 0.8, # Scale isotropic spectra
                  offset = 0., # Baseline offset
