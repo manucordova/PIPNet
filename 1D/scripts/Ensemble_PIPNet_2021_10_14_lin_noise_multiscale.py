@@ -70,7 +70,7 @@ train_pars = dict(batch_size = 16, # Dataset batch size
                   checkpoint = 1000, # Perform evaluation after that many batches
                   n_eval = 100, # Number of batches in the evaluation
                   max_checkpoints = 100, # Maximum number of checkpoints before finishing training
-                  out_dir = "../data/Ensemble_PIPNet_2021_10_14_lin_noise/", # Output directory
+                  out_dir = "../data/Ensemble_PIPNet_2021_10_14_lin_noise_multiscale/", # Output directory
                   change_factor = {50: 100., 90: 10.}, # Checkpoints where
                   avg_models = False,
                   device = "cuda",
