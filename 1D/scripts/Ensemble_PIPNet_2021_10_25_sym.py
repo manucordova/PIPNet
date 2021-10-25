@@ -65,7 +65,7 @@ data_pars = dict(
                  wr_inv = False # Encode inverse of MAS rate instead of MAS rate
                 )
 
-train_pars = dict(batch_size = 64, # Dataset batch size
+train_pars = dict(batch_size = 16, # Dataset batch size
                   num_workers = 36, # Number of parallel processes to generate data
                   checkpoint = 1000, # Perform evaluation after that many batches
                   n_eval = 100, # Number of batches in the evaluation
@@ -73,7 +73,7 @@ train_pars = dict(batch_size = 64, # Dataset batch size
                   out_dir = "../data/Ensemble_PIPNet_2021_10_25_sym/", # Output directory
                   change_factor = {50: 100., 90: 10.}, # Checkpoints where
                   avg_models = False,
-                  device = "cpu",
+                  device = "cuda" if torch.cuda.is_available() else "cpu",
                   monitor_end = "\n"
                  )
 
