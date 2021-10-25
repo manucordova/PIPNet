@@ -73,7 +73,7 @@ train_pars = dict(batch_size = 64, # Dataset batch size
                   out_dir = "../data/Ensemble_PIPNet_2021_10_25_sym_rand_mas/", # Output directory
                   change_factor = {50: 100., 90: 10.}, # Checkpoints where
                   avg_models = False,
-                  device = "cuda",
+                  device = "cpu",
                   monitor_end = "\n"
                  )
 
