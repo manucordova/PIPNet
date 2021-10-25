@@ -26,6 +26,10 @@ class PIPDataset(torch.utils.data.Dataset):
         # Extract time domain points
         self.t = np.arange(0, self.td, 1) / self.Fs
 
+        # Get frequency domain points
+        self.df = self.Fs / self.td
+        self.f = np.arange(0, self.td, 1) * self.df
+
         return
 
     def gen_iso_peak(self):

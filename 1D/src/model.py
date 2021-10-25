@@ -41,6 +41,24 @@ class ConvLSTMCell(nn.Module):
                               padding=self.padding,
                               bias=self.bias)
 
+    def analyze(self, input_tensor, cur_state):
+
+        h_cur, c_cur = cur_state
+
+        combined = torch.cat([input_tensor, h_cur], dim=1)  # concatenate along channel axis
+
+        combined_conv = self.conv(combined)
+        cc_i, cc_f, cc_o, cc_g = torch.split(combined_conv, self.hidden_dim, dim=1)
+        i = torch.sigmoid(cc_i)
+        f = torch.sigmoid(cc_f)
+        o = torch.sigmoid(cc_o)
+        g = torch.tanh(cc_g)
+
+        c_next = f * c_cur + i * g
+        h_next = o * torch.tanh(c_next)
+
+        return i, f, o, g, h_next, c_next
+
     def forward(self, input_tensor, cur_state):
         h_cur, c_cur = cur_state
 
@@ -136,6 +154,17 @@ class ConvLSTM(nn.Module):
         else:
             raise ValueError(f"Unknown final activation: {final_act}")
 
+    def _batch_input(self, input_tensor):
+        # Batch input layers
+        cur_layer_input = []
+        for i in range(input_tensor.size(1)):
+            if i >= self.batch_input - 1:
+                tmp_input = []
+                for j in reversed(range(self.batch_input)):
+                    tmp_input.append(torch.unsqueeze(input_tensor[:, i-j], 1))
+                cur_layer_input.append(torch.cat(tmp_input, dim=2))
+        return torch.cat(cur_layer_input, dim=1)
+
     def forward(self, input_tensor, hidden_state=None):
         """
         Parameters
@@ -163,15 +192,8 @@ class ConvLSTM(nn.Module):
         last_state_list = []
 
         # Batch input layers
-        cur_layer_input = []
-        for i in range(input_tensor.size(1)):
-            if i >= self.batch_input - 1:
-                tmp_input = []
-                for j in reversed(range(self.batch_input)):
-                    tmp_input.append(torch.unsqueeze(input_tensor[:, i-j], 1))
-                cur_layer_input.append(torch.cat(tmp_input, dim=2))
+        cur_layer_input = self._batch_input(input_tensor)
 
-        cur_layer_input = torch.cat(cur_layer_input, dim=1)
         if self.noise > 0.:
             cur_layer_input += torch.randn_like(cur_layer_input) * self.noise
         seq_len = cur_layer_input.size(1)
