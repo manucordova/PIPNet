@@ -190,6 +190,7 @@ class ConvLSTM(nn.Module):
 
         layer_output_list = []
         last_state_list = []
+        output_list = []
 
         # Batch input layers
         cur_layer_input = self._batch_input(input_tensor)
@@ -208,17 +209,22 @@ class ConvLSTM(nn.Module):
                                                  cur_state=[h, c])
                 output_inner.append(h)
 
+                if self.return_all_layers and layer_idx == self.num_layers - 1:
+                    output = self.final_conv(h)
+                    output = self.final_act(output)
+                    output_list.append(output)
+
             layer_output = torch.stack(output_inner, dim=1)
             cur_layer_input = layer_output
 
             layer_output_list.append(layer_output)
             last_state_list.append([h, c])
 
-        output = self.final_conv(h)
-        output = self.final_act(output)
-
-        if not self.return_all_layers:
-            return output, [], []
+        if self.return_all_layers:
+            output = torch.cat(output_list, dim=1)
+        else:
+            output = self.final_conv(h)
+            output = self.final_act(output)
 
         return output, layer_output_list, last_state_list
 
@@ -267,6 +273,7 @@ class ConvLSTMEnsemble(nn.Module):
 
         self.is_ensemble = True
         self.noise = noise
+        self.return_all_layers=return_all_layers
 
         self.multiscale_ks = isinstance(kernel_size[0], list)
         self.multiscale_fks = isinstance(final_kernel_size, list)

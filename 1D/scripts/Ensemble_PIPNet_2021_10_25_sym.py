@@ -66,7 +66,7 @@ data_pars = dict(
                 )
 
 train_pars = dict(batch_size = 16, # Dataset batch size
-                  num_workers = 36, # Number of parallel processes to generate data
+                  num_workers = 20, # Number of parallel processes to generate data
                   checkpoint = 1000, # Perform evaluation after that many batches
                   n_eval = 100, # Number of batches in the evaluation
                   max_checkpoints = 100, # Maximum number of checkpoints before finishing training
@@ -80,22 +80,7 @@ train_pars = dict(batch_size = 16, # Dataset batch size
 model_pars = dict(n_models = 15,
                   input_dim = 2,
                   hidden_dim = 64,
-                  kernel_size = [[5, 5, 5, 5, 5, 5],
-                                 [5, 5, 5, 5, 5, 5],
-                                 [5, 5, 5, 5, 5, 5],
-                                 [7, 7, 7, 7, 7, 7],
-                                 [7, 7, 7, 7, 7, 7],
-                                 [7, 7, 7, 7, 7, 7],
-                                 [9, 9, 9, 9, 9, 9],
-                                 [9, 9, 9, 9, 9, 9],
-                                 [9, 9, 9, 9, 9, 9],
-                                 [11, 11, 11, 11, 11, 11],
-                                 [11, 11, 11, 11, 11, 11],
-                                 [11, 11, 11, 11, 11, 11],
-                                 [13, 13, 13, 13, 13, 13],
-                                 [13, 13, 13, 13, 13, 13],
-                                 [13, 13, 13, 13, 13, 13],
-                                ],
+                  kernel_size = [[5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5], [7, 7, 7, 7, 7, 7], [7, 7, 7, 7, 7, 7], [7, 7, 7, 7, 7, 7], [9, 9, 9, 9, 9, 9], [9, 9, 9, 9, 9, 9], [9, 9, 9, 9, 9, 9], [11, 11, 11, 11, 11, 11], [11, 11, 11, 11, 11, 11], [11, 11, 11, 11, 11, 11], [13, 13, 13, 13, 13, 13], [13, 13, 13, 13, 13, 13], [13, 13, 13, 13, 13, 13]],
                   num_layers = 6,
                   final_kernel_size = [5, 9, 13, 5, 9, 13, 5, 9, 13, 5, 9, 13, 5, 9, 13],
                   batch_input = 4,

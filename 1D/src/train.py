@@ -24,6 +24,9 @@ def evaluate(data_generator, net, loss, train_pars, i_chk):
         # Forward pass
         y_pred, y_std, ys_pred = net(X)
 
+        if net.return_all_layers:
+            y = y.repeat((1, y_pred.shape[-2], 1))
+
         # Compute loss
         if not net.is_ensemble or train_pars["avg_models"]:
             l = loss(y_pred, y)
@@ -59,7 +62,7 @@ def train(dataset, net, opt, loss, sch, train_pars):
 
     Inputs: - dataset           Training (and test) data generator
             - net               Network
-            - # OPTIMIZE:       Optimizer
+            - opt               Optimizer
             - loss              Loss function
             - sch               Learning rate scheduler
             - train_pars        Training parameters
@@ -93,6 +96,9 @@ def train(dataset, net, opt, loss, sch, train_pars):
 
         # Forward pass
         y_pred, y_std, ys_pred = net(X)
+
+        if net.return_all_layers:
+            y = y.repeat((1, y_pred.shape[-2], 1))
 
         if batch == 0:
             assert(y_pred.shape == y.shape)

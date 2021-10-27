@@ -53,7 +53,7 @@ data_pars = dict(
                  encode_imag = False, # Encode the imaginary part of the MAS spectra
                  nw = 8, # Number of MAS rates
                  mas_w_range = [30000, 100000], # MAS rate range
-                 random_mas = True,
+                 random_mas = False,
                  encode_w = True, # Encode the MAS rate of the spectra
 
                  # Post-processing parameters
@@ -65,30 +65,30 @@ data_pars = dict(
                  wr_inv = False # Encode inverse of MAS rate instead of MAS rate
                 )
 
-train_pars = dict(batch_size = 4, # Dataset batch size
-                  num_workers = 8, # Number of parallel processes to generate data
-                  checkpoint = 100, # Perform evaluation after that many batches
+train_pars = dict(batch_size = 16, # Dataset batch size
+                  num_workers = 36, # Number of parallel processes to generate data
+                  checkpoint = 1000, # Perform evaluation after that many batches
                   n_eval = 100, # Number of batches in the evaluation
                   max_checkpoints = 100, # Maximum number of checkpoints before finishing training
-                  out_dir = "../data/Ensemble_PIPNet_test/", # Output directory
+                  out_dir = "../data/Ensemble_PIPNet_2021_10_25_sym/", # Output directory
                   change_factor = {50: 100., 90: 10.}, # Checkpoints where
                   avg_models = False,
-                  sparsify_mas = "random",
-                  device = "cpu",
-                  monitor_end = "\r"
+                  device = "cuda" if torch.cuda.is_available() else "cpu",
+                  monitor_end = "\n"
                  )
 
-model_pars = dict(n_models = 5,
+model_pars = dict(n_models = 15,
                   input_dim = 2,
                   hidden_dim = 64,
-                  kernel_size = [1, 3, 5],
-                  num_layers = 3,
-                  final_kernel_size = 1,
-                  batch_input = 2,
+                  kernel_size = [[5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5], [5, 5, 5, 5, 5, 5], [7, 7, 7, 7, 7, 7], [7, 7, 7, 7, 7, 7], [7, 7, 7, 7, 7, 7], [9, 9, 9, 9, 9, 9], [9, 9, 9, 9, 9, 9], [9, 9, 9, 9, 9, 9], [11, 11, 11, 11, 11, 11], [11, 11, 11, 11, 11, 11], [11, 11, 11, 11, 11, 11], [13, 13, 13, 13, 13, 13], [13, 13, 13, 13, 13, 13], [13, 13, 13, 13, 13, 13]],
+                  num_layers = 6,
+                  final_kernel_size = [5, 9, 13, 5, 9, 13, 5, 9, 13, 5, 9, 13, 5, 9, 13],
+                  batch_input = 4,
                   bias = True,
                   final_bias = True,
-                  return_all_layers = True,
-                  final_act = "sigmoid",
+                  return_all_layers = False,
+                  final_act = "linear",
+                  noise = 1.e-4,
                  )
 
 if not os.path.exists(train_pars["out_dir"]):
