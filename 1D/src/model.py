@@ -6,6 +6,7 @@
 ###                       Last edited: 2021-09-24                       ###
 ###########################################################################
 
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -332,44 +333,114 @@ class ConvLSTMEnsemble(nn.Module):
 
 
 class CustomLoss(nn.Module):
-    def __init__(self, exp=2., offset=0., factor=1., out_factor=1.):
+    def __init__(self, srp_w=1., srp_exp=2., srp_offset=1., srp_fac=0.,
+                 brd_w=0, brd_sig=5, brd_len=25, brd_exp=1., brd_offset=1., brd_fac=0.):
+        super(CustomLoss, self).__init__()
 
-        self.exp = exp
-        self.offset = offset
-        self.factor = factor
-        self.out_factor = out_factor
+        self.srp_w = srp_w
+        self.srp_exp = srp_exp
+        self.srp_offset = srp_offset
+        self.srp_fac = srp_fac
+
+        self.brd_w = brd_w
+        self.brd_exp = brd_exp
+        self.brd_offset = brd_offset
+        self.brd_fac = brd_fac
+
+        if srp_w == 0. and brd_w == 0.:
+            raise ValueError("At least one of the loss weights should be non-zero!")
+
+        if self.brd_w > 0.:
+
+            brd_pad = brd_len // 2
+            k = 1. / (2 * np.pi * (brd_sig ** 2)) * torch.exp(-torch.square(torch.arange(brd_len) - brd_pad) / (2*(brd_sig ** 2)))
+            k /= torch.sum(k)
+            k = k.view(1, 1, brd_len)
+
+            self.brd_filt = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=brd_len, padding=brd_pad, bias=False)
+            self.brd_filt.weight.data = k
+            self.brd_filt.weight.requires_grad = False
 
         return
 
-    def update(self, exp=None, offset=None, factor=None, out_factor=None):
+    def update(self, exp=None, offset=None, factor=None):
 
         if exp is not None:
-            self.exp = exp
+            self.srp_exp = exp
 
         if offset is not None:
-            self.offset = offset
+            self.srp_offset = offset
 
         if factor is not None:
-            self.factor = factor
-
-        if out_factor is not None:
-            self.out_factor = out_factor
+            self.srp_fac = factor
 
         return
 
-    def __call__(self, y, y_trg):
+    def srp_loss(self, y, y_trg):
+        """
+        'Sharp' loss: direct comparison between isotropic and predicted spectra
+        """
 
         # Compute difference between output and target spectra
         x = torch.abs(y - y_trg)
 
         # Raise to the selected exponential
-        x = torch.pow(x, self.exp)
+        x = torch.pow(x, self.srp_exp)
 
         # Compute the scaling
-        f = torch.ones_like(x) * self.offset
+        w = torch.ones_like(x) * self.srp_offset
 
-        f = torch.max(f, torch.max(y.detach() * self.out_factor, y_trg) * self.factor)
+        w = torch.max(w, y_trg * self.srp_fac)
 
-        x = x * f
+        x = x * w
 
         return torch.mean(x)
+
+    def brd_loss(self, y, y_trg):
+        """
+        'Broad' loss: comparison between broadened isotropic and predicted spectra
+        """
+
+        y2 = []
+        for i in range(y.shape[0]):
+            tmp_y = []
+            for k in range(y.shape[2]):
+                tmp_y.append(self.brd_filt(y[i, :, k:k+1]))
+            tmp_y = torch.cat(tmp_y, dim=1)
+            y2.append(tmp_y.unsqueeze(0))
+        y2 = torch.cat(y2, dim=0)
+
+        y2_trg = []
+        for i in range(y_trg.shape[0]):
+            tmp_y = []
+            for k in range(y_trg.shape[2]):
+                tmp_y.append(self.brd_filt(y_trg[i, :, k:k+1]))
+            tmp_y = torch.cat(tmp_y, dim=1)
+            y2_trg.append(tmp_y.unsqueeze(0))
+        y2_trg = torch.cat(y2_trg, dim=0)
+
+        # Compute difference between output and target spectra
+        x = torch.abs(y2 - y2_trg)
+
+        # Raise to the selected exponential
+        x = torch.pow(x, self.brd_exp)
+
+        # Compute the scaling
+        w = torch.ones_like(x) * self.brd_offset
+
+        w = torch.max(w, y2_trg * self.brd_fac)
+
+        x = x * w
+
+        return torch.mean(x)
+
+    def __call__(self, y, y_trg):
+
+        loss = 0.
+        if self.srp_w > 0.:
+            loss += self.srp_loss(y, y_trg)
+
+        if self.brd_w > 0.:
+            loss += self.brd_loss(y, y_trg)
+
+        return loss

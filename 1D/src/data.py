@@ -51,9 +51,44 @@ class PIPDataset(torch.utils.data.Dataset):
         else:
             ws = np.ones(n) * w0
 
-        # Get broadening for each Gaussian (uniform distribution)
-        dlw = self.lw[1]-self.lw[0]
-        lws = self.lw[0] + (np.random.rand(n) * dlw)
+        if isinstance(self.lw[0], list):
+
+            if self.iso_p_peakwise:
+                # Randomly select broadening range
+                p = np.random.random()
+                i = 0
+                p_tot = self.iso_p[i]
+                while p > p_tot:
+                    i += 1
+                    p_tot += self.iso_p[i]
+
+                # Get broadening with the same range for each Gaussian
+                dlw = self.lw[i][1] - self.lw[i][0]
+                lws = self.lw[i][0] + (np.random.rand(n) * dlw)
+
+            else:
+                lws = []
+
+                for _ in range(n):
+                    # Randomly select broadening range
+                    p = np.random.random()
+                    i = 0
+                    p_tot = self.iso_p[i]
+                    while p > p_tot:
+                        i += 1
+                        p_tot += self.iso_p[i]
+
+                    # Get broadening with the same range for each Gaussian
+                    dlw = self.lw[i][1] - self.lw[i][0]
+                    lws.append(self.lw[i][0] + (np.random.rand() * dlw))
+                lws = np.array(lws)
+
+
+
+        else:
+            # Get broadening for each Gaussian (uniform distribution)
+            dlw = self.lw[1]-self.lw[0]
+            lws = self.lw[0] + (np.random.rand(n) * dlw)
 
         # Get phase for each Gaussian (normal distribution)
         if self.phase > 0.:
@@ -142,20 +177,54 @@ class PIPDataset(torch.utils.data.Dataset):
             # Generate phase of MAS spectra (normal distribution)
             ps = np.random.randn(self.nw) * self.mas_phase
 
-        # Generate MAS-dependent Lorentzian broadening (uniform distribution)
-        dl = self.mas_l_range[1] - self.mas_l_range[0]
-        l0 = self.mas_l_range[0]
-        ls = l0 + (np.random.rand(n) * dl)
+        if isinstance(self.mas_l_range[0], list):
+            # Randomly select broadening range
+            ls = []
+            gs = []
+            ss = []
+            for _ in range(n):
+                # Randomly select broadening range
+                p = np.random.random()
+                i = 0
+                p_tot = self.mas_p[i]
+                while p > p_tot:
+                    i += 1
+                    p_tot += self.mas_p[i]
 
-        # Generate MAS-dependent Gaussian broadening (uniform distribution)
-        dg = self.mas_g_range[1] - self.mas_g_range[0]
-        g0 = self.mas_g_range[0]
-        gs = g0 + (np.random.rand(n) * dg)
+                # Generate MAS-dependent Lorentzian broadening (uniform distribution)
+                dl = self.mas_l_range[i][1] - self.mas_l_range[i][0]
+                l0 = self.mas_l_range[i][0]
+                ls.append(l0 + (np.random.rand() * dl))
 
-        # Generate MAS-dependent shift
-        ds = self.mas_s_range[1] - self.mas_s_range[0]
-        s0 = self.mas_s_range[0]
-        ss = s0 + (np.random.rand(n) * ds)
+                # Generate MAS-dependent Gaussian broadening (uniform distribution)
+                dg = self.mas_g_range[i][1] - self.mas_g_range[i][0]
+                g0 = self.mas_g_range[i][0]
+                gs.append(g0 + (np.random.rand() * dg))
+
+                # Generate MAS-dependent shift
+                ds = self.mas_s_range[i][1] - self.mas_s_range[i][0]
+                s0 = self.mas_s_range[i][0]
+                ss.append(s0 + (np.random.rand() * ds))
+
+            ls = np.array(ls)
+            gs = np.array(gs)
+            ss = np.array(ss)
+
+        else:
+            # Generate MAS-dependent Lorentzian broadening (uniform distribution)
+            dl = self.mas_l_range[1] - self.mas_l_range[0]
+            l0 = self.mas_l_range[0]
+            ls = l0 + (np.random.rand(n) * dl)
+
+            # Generate MAS-dependent Gaussian broadening (uniform distribution)
+            dg = self.mas_g_range[1] - self.mas_g_range[0]
+            g0 = self.mas_g_range[0]
+            gs = g0 + (np.random.rand(n) * dg)
+
+            # Generate MAS-dependent shift
+            ds = self.mas_s_range[1] - self.mas_s_range[0]
+            s0 = self.mas_s_range[0]
+            ss = s0 + (np.random.rand(n) * ds)
 
         if self.debug:
             print("\n  Generated MAS rates: " + ", ".join([f"{w:6.0f}" for w in wr]) + " Hz")
@@ -233,29 +302,7 @@ class PIPDataset(torch.utils.data.Dataset):
 
         return output
 
-    def __len__(self):
-        """
-        Dummy function for pytorch to work properly
-        """
-
-        return int(1e12)
-
-    def __getitem__(self, _):
-        """
-        Generate an input
-        """
-
-        # Generate isotropic spectrum
-        n, specs, iso = self.gen_iso_spectra()
-
-        # Generate MAS-dependent parameters
-        wr, ls, gs, ss, ps = self.gen_mas_params(n)
-
-        # Broaden isotropic spectrum with MAS-dependent parameters
-        brd_specs = self.mas_broaden(specs, wr, ls, gs, ss, ps)
-
-        # Set the minimum of each spectrum to zero
-        brd_specs -= np.min(brd_specs[:, 0], axis=1)[:, np.newaxis, np.newaxis]
+    def normalize_spectra(self, iso, specs, brd_specs):
 
         # Get real spectra integrals
         int0 = np.sum(iso)
@@ -266,13 +313,17 @@ class PIPDataset(torch.utils.data.Dataset):
         # Normalize isotropic spectrum
         iso *= self.scale_iso / max0
         iso += self.offset
-        specs *= self.scale_iso / max0
+        specs *= self.scale_iso / max0 / specs.shape[0]
         specs += self.offset
 
         # Normalize broadened spectra
         fac = (target_int / ints)[:, np.newaxis, np.newaxis]
         brd_specs *= fac
         brd_specs += self.offset
+
+        return iso, specs, brd_specs
+
+    def finalize_spectra(self, iso, specs, brd_specs, wr):
 
         # Add noise
         if self.noise > 0.:
@@ -306,3 +357,32 @@ class PIPDataset(torch.utils.data.Dataset):
         return (torch.from_numpy(brd_specs.astype(np.float32)),
                 torch.from_numpy(specs.astype(np.float32)),
                 torch.from_numpy(iso.astype(np.float32)))
+
+    def __len__(self):
+        """
+        Dummy function for pytorch to work properly
+        """
+
+        return int(1e12)
+
+    def __getitem__(self, _):
+        """
+        Generate an input
+        """
+
+        # Generate isotropic spectrum
+        n, specs, iso = self.gen_iso_spectra()
+
+        # Generate MAS-dependent parameters
+        wr, ls, gs, ss, ps = self.gen_mas_params(n)
+
+        # Broaden isotropic spectrum with MAS-dependent parameters
+        brd_specs = self.mas_broaden(specs, wr, ls, gs, ss, ps)
+
+        # Set the minimum of each spectrum to zero
+        brd_specs -= np.min(brd_specs[:, 0], axis=1)[:, np.newaxis, np.newaxis]
+
+        # Normalize spectra
+        iso, specs, brd_specs = self.normalize_spectra(iso, specs, brd_specs)
+
+        return self.finalize_spectra(iso, specs, brd_specs, wr)
