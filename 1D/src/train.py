@@ -14,6 +14,9 @@ def evaluate(data_generator, net, loss, train_pars, i_chk):
     net.eval()
 
     val_losses = []
+    val_components = []
+    # Dummy loss components if not returned
+    components = [0., 0.]
 
     # Evaluation loop
     for val_batch, (X, _, y) in enumerate(data_generator):
@@ -29,13 +32,20 @@ def evaluate(data_generator, net, loss, train_pars, i_chk):
 
         # Compute loss
         if not net.is_ensemble or train_pars["avg_models"]:
-            l = loss(y_pred, y)
+            if loss.return_components:
+                l, components = loss(y_pred, y)
+            else:
+                l = loss(y_pred, y)
         else:
             ys = torch.cat([torch.unsqueeze(y.clone(), 0) for _ in range(ys_pred.shape[0])])
-            l = loss(ys_pred, ys)
+            if loss.return_components:
+                l, components = loss(ys_pred, ys)
+            else:
+                l = loss(ys_pred, ys)
 
         # Update monitoring lists
         val_losses.append(float(l.detach()))
+        val_components.append(components)
 
         pp = "    Validation batch {: 4d}: ".format(val_batch + 1)
         pp += "loss = {: 1.4e}, ".format(val_losses[-1])
@@ -54,7 +64,7 @@ def evaluate(data_generator, net, loss, train_pars, i_chk):
     if net.is_ensemble:
         np.save(train_pars["out_dir"] + f"checkpoint_{i_chk}_std.npy", y_std.detach().cpu().numpy())
 
-    return val_losses
+    return val_losses, val_components
 
 def train(dataset, net, opt, loss, sch, train_pars):
     """
@@ -77,9 +87,14 @@ def train(dataset, net, opt, loss, sch, train_pars):
     all_losses = []
     all_val_losses = []
     all_lrs = []
+    all_components = []
+    all_val_components = []
 
     losses = []
     lrs = []
+    components = []
+    # Dummy loss components if not returned
+    these_components = [0., 0.]
 
     i_chk = 1
 
@@ -105,10 +120,16 @@ def train(dataset, net, opt, loss, sch, train_pars):
 
         # Compute loss
         if not net.is_ensemble or train_pars["avg_models"]:
-            l = loss(y_pred, y)
+            if loss.return_components:
+                l, these_components = loss(y_pred, y)
+            else:
+                l = loss(y_pred, y)
         else:
             ys = torch.cat([torch.unsqueeze(y.clone(), 0) for _ in range(ys_pred.shape[0])])
-            l = loss(ys_pred, ys)
+            if loss.return_components:
+                l, these_components = loss(ys_pred, ys)
+            else:
+                l = loss(ys_pred, ys)
 
         # Backward pass
         l.backward()
@@ -119,6 +140,7 @@ def train(dataset, net, opt, loss, sch, train_pars):
         # Update monitoring lists
         losses.append(float(l.detach()))
         lrs.append(opt.param_groups[0]["lr"])
+        components.append(these_components)
 
         pp = "    Training batch {: 4d}: ".format(batch + 1)
         pp += "loss = {: 1.4e}, ".format(losses[-1])
@@ -130,17 +152,22 @@ def train(dataset, net, opt, loss, sch, train_pars):
         if (batch + 1) % train_pars["checkpoint"] == 0:
 
             print("\n  Checkpoint reached, evaluating the model...")
-            val_losses = evaluate(data_generator, net, loss, train_pars, i_chk)
+            val_losses, val_components = evaluate(data_generator, net, loss, train_pars, i_chk)
 
             all_val_losses.append(val_losses)
             all_losses.append(losses)
             all_lrs.append(lrs)
+            all_components.append(components)
+            all_val_components.append(val_components)
 
             losses = []
             lrs = []
+            components = []
 
             np.save(train_pars["out_dir"] + "all_losses.npy", np.array(all_losses))
+            np.save(train_pars["out_dir"] + "all_loss_components.npy", np.array(all_components))
             np.save(train_pars["out_dir"] + "all_val_losses.npy", np.array(all_val_losses))
+            np.save(train_pars["out_dir"] + "all_val_loss_components.npy", np.array(all_val_components))
             np.save(train_pars["out_dir"] + "all_lrs.npy", np.array(all_lrs))
 
             # Learning rate scheduler step

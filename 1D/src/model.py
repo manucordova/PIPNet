@@ -334,7 +334,7 @@ class ConvLSTMEnsemble(nn.Module):
 
 class CustomLoss(nn.Module):
     def __init__(self, srp_w=1., srp_exp=2., srp_offset=1., srp_fac=0.,
-                 brd_w=0, brd_sig=5, brd_len=25, brd_exp=1., brd_offset=1., brd_fac=0.):
+                 brd_w=0, brd_sig=5, brd_len=25, brd_exp=1., brd_offset=1., brd_fac=0., return_components=False):
         super(CustomLoss, self).__init__()
 
         self.srp_w = srp_w
@@ -346,6 +346,8 @@ class CustomLoss(nn.Module):
         self.brd_exp = brd_exp
         self.brd_offset = brd_offset
         self.brd_fac = brd_fac
+
+        self.return_components = return_components
 
         if srp_w == 0. and brd_w == 0.:
             raise ValueError("At least one of the loss weights should be non-zero!")
@@ -401,23 +403,15 @@ class CustomLoss(nn.Module):
         'Broad' loss: comparison between broadened isotropic and predicted spectra
         """
 
-        y2 = []
-        for i in range(y.shape[0]):
-            tmp_y = []
-            for k in range(y.shape[2]):
-                tmp_y.append(self.brd_filt(y[i, :, k:k+1]))
-            tmp_y = torch.cat(tmp_y, dim=1)
-            y2.append(tmp_y.unsqueeze(0))
-        y2 = torch.cat(y2, dim=0)
+        # Reshape array to allow 1D convolution
+        y2 = y.reshape(-1, 1, y.shape[-1])
+        # Perform 1D convolution
+        y2 = self.brd_filt(y2)
 
-        y2_trg = []
-        for i in range(y_trg.shape[0]):
-            tmp_y = []
-            for k in range(y_trg.shape[2]):
-                tmp_y.append(self.brd_filt(y_trg[i, :, k:k+1]))
-            tmp_y = torch.cat(tmp_y, dim=1)
-            y2_trg.append(tmp_y.unsqueeze(0))
-        y2_trg = torch.cat(y2_trg, dim=0)
+        # Reshape array to allow 1D convolution
+        y2_trg = y_trg.reshape(-1, 1, y_trg.shape[-1])
+        # Perform 1D convolution
+        y2_trg = self.brd_filt(y2_trg)
 
         # Compute difference between output and target spectra
         x = torch.abs(y2 - y2_trg)
@@ -436,11 +430,18 @@ class CustomLoss(nn.Module):
 
     def __call__(self, y, y_trg):
 
-        loss = 0.
+        srp_loss = 0.
+        brd_loss = 0.
         if self.srp_w > 0.:
-            loss += self.srp_loss(y, y_trg)
+            srp_loss = self.srp_loss(y, y_trg)
 
         if self.brd_w > 0.:
-            loss += self.brd_loss(y, y_trg)
+            brd_loss = self.brd_loss(y, y_trg)
 
-        return loss
+        tot_loss = srp_loss + brd_loss
+
+        if self.return_components:
+
+            return tot_loss, [srp_loss.detach(), brd_loss.detach()]
+
+        return tot_loss
