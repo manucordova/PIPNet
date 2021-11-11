@@ -334,7 +334,7 @@ class ConvLSTMEnsemble(nn.Module):
 
 class CustomLoss(nn.Module):
     def __init__(self, srp_w=1., srp_exp=2., srp_offset=1., srp_fac=0.,
-                 brd_w=0, brd_sig=5, brd_len=25, brd_exp=1., brd_offset=1., brd_fac=0., return_components=False):
+                 brd_w=0, brd_sig=5, brd_len=25, brd_exp=1., brd_offset=1., brd_fac=0., return_components=False, device="cpu"):
         super(CustomLoss, self).__init__()
 
         self.srp_w = srp_w
@@ -362,6 +362,7 @@ class CustomLoss(nn.Module):
             self.brd_filt = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=brd_len, padding=brd_pad, bias=False)
             self.brd_filt.weight.data = k
             self.brd_filt.weight.requires_grad = False
+            self.brd_filt.to(device)
 
         return
 

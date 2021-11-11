@@ -37,7 +37,7 @@ data_pars = dict(
                  pmin = 1, # Minimum number of Gaussians in a peak
                  pmax = 1, # Maximum number of Gaussians in a peak
                  ds = 0.03, # Spread of chemical shift values for each peak
-                 lw = [[5e1, 2e2], [1e2, 2e3]], # Linewidth range for Gaussians
+                 lw = [[5e1, 2e2], [1e2, 1e3]], # Linewidth range for Gaussians
                  iso_p = [0.9, 0.1],
                  iso_p_peakwise = True,
                  phase = 0., # Spread of phase
@@ -124,7 +124,7 @@ net = model.ConvLSTMEnsemble(**model_pars).to(train_pars["device"])
 
 opt = torch.optim.Adam(net.parameters(), lr=1e-3, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
 
-loss = model.CustomLoss(**loss_pars)
+loss = model.CustomLoss(**loss_pars, device=train_pars["device"])
 
 sch = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, factor=0.5, patience=5)
 
