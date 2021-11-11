@@ -443,6 +443,6 @@ class CustomLoss(nn.Module):
 
         if self.return_components:
 
-            return tot_loss, [srp_loss.detach(), brd_loss.detach()]
+            return tot_loss, [float(srp_loss.detach().cpu()), float(brd_loss.detach().cpu())]
 
         return tot_loss
