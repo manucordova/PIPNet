@@ -124,7 +124,7 @@ net = model.ConvLSTMEnsemble(**model_pars).to(train_pars["device"])
 
 opt = torch.optim.Adam(net.parameters(), lr=1e-3, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
 
-loss = model.CustomLoss(**loss_pars)
+loss = model.CustomLoss(**loss_pars, device=train_pars["device"])
 
 sch = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, factor=0.5, patience=5)
 
