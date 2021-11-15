@@ -369,12 +369,15 @@ class CustomLoss(nn.Module):
     def update(self, exp=None, offset=None, factor=None):
 
         if exp is not None:
+            print(f"Exponent updated to {exp}")
             self.srp_exp = exp
 
         if offset is not None:
+            print(f"Offset updated to {offset}")
             self.srp_offset = offset
 
         if factor is not None:
+            print(f"Factor updated to {factor}")
             self.srp_fac = factor
 
         return

@@ -175,7 +175,7 @@ def train(dataset, net, opt, loss, sch, train_pars):
 
             # Update loss
             if i_chk in train_pars["change_factor"]:
-                loss.factor = train_pars["change_factor"][i_chk]
+                loss.update(factor=train_pars["change_factor"][i_chk])
 
             i_chk += 1
 
