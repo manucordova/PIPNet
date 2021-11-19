@@ -400,7 +400,7 @@ class CustomLoss(nn.Module):
 
         x = x * w
 
-        return torch.mean(x)
+        return torch.mean(x) * self.srp_w
 
     def brd_loss(self, y, y_trg):
         """
@@ -430,7 +430,7 @@ class CustomLoss(nn.Module):
 
         x = x * w
 
-        return torch.mean(x)
+        return torch.mean(x) * self.brd_w
 
     def __call__(self, y, y_trg):
 
