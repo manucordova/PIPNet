@@ -12,7 +12,7 @@ import torch.nn as nn
 
 class ConvLSTMCell(nn.Module):
 
-    def __init__(self, input_dim, hidden_dim, kernel_size, bias):
+    def __init__(self, input_dim, hidden_dim, kernel_size, bias, independent=False):
         """
         Initialize ConvLSTM cell.
         Parameters
@@ -35,12 +35,20 @@ class ConvLSTMCell(nn.Module):
         self.kernel_size = kernel_size
         self.padding = kernel_size // 2
         self.bias = bias
+        self.independent = independent
 
-        self.conv = nn.Conv1d(in_channels=self.input_dim + self.hidden_dim,
-                              out_channels=4 * self.hidden_dim,
-                              kernel_size=self.kernel_size,
-                              padding=self.padding,
-                              bias=self.bias)
+        if self.independent:
+            self.conv = nn.Conv1d(in_channels=self.input_dim + self.hidden_dim,
+                                  out_channels=3 * self.hidden_dim,
+                                  kernel_size=self.kernel_size,
+                                  padding=self.padding,
+                                  bias=self.bias)
+        else:
+            self.conv = nn.Conv1d(in_channels=self.input_dim + self.hidden_dim,
+                                  out_channels=4 * self.hidden_dim,
+                                  kernel_size=self.kernel_size,
+                                  padding=self.padding,
+                                  bias=self.bias)
 
     def analyze(self, input_tensor, cur_state):
 
@@ -49,10 +57,17 @@ class ConvLSTMCell(nn.Module):
         combined = torch.cat([input_tensor, h_cur], dim=1)  # concatenate along channel axis
 
         combined_conv = self.conv(combined)
-        cc_i, cc_f, cc_o, cc_g = torch.split(combined_conv, self.hidden_dim, dim=1)
+
+        if self.independent:
+            cc_i, cc_f, cc_g = torch.split(combined_conv, self.hidden_dim, dim=1)
+            o = 1.
+
+        else:
+            cc_i, cc_f, cc_o, cc_g = torch.split(combined_conv, self.hidden_dim, dim=1)
+            o = torch.sigmoid(cc_o)
+
         i = torch.sigmoid(cc_i)
         f = torch.sigmoid(cc_f)
-        o = torch.sigmoid(cc_o)
         g = torch.tanh(cc_g)
 
         c_next = f * c_cur + i * g
@@ -65,11 +80,16 @@ class ConvLSTMCell(nn.Module):
 
         combined = torch.cat([input_tensor, h_cur], dim=1)  # concatenate along channel axis
 
-        combined_conv = self.conv(combined)
-        cc_i, cc_f, cc_o, cc_g = torch.split(combined_conv, self.hidden_dim, dim=1)
+        if self.independent:
+            cc_i, cc_f, cc_g = torch.split(combined_conv, self.hidden_dim, dim=1)
+            o = 1.
+
+        else:
+            cc_i, cc_f, cc_o, cc_g = torch.split(combined_conv, self.hidden_dim, dim=1)
+            o = torch.sigmoid(cc_o)
+
         i = torch.sigmoid(cc_i)
         f = torch.sigmoid(cc_f)
-        o = torch.sigmoid(cc_o)
         g = torch.tanh(cc_g)
 
         c_next = f * c_cur + i * g
@@ -108,7 +128,8 @@ class ConvLSTM(nn.Module):
     """
 
     def __init__(self, input_dim, hidden_dim, kernel_size, num_layers,
-                 final_kernel_size=1, batch_input=1, bias=True, final_bias=True, return_all_layers=False, final_act="sigmoid", noise=0.):
+                 final_kernel_size=1, batch_input=1, bias=True, final_bias=True,
+                 independent=False, return_all_layers=False, final_act="sigmoid", noise=0.):
         super(ConvLSTM, self).__init__()
 
         # Make sure that both `kernel_size` and `hidden_dim` are lists having len == num_layers
@@ -138,7 +159,8 @@ class ConvLSTM(nn.Module):
             cell_list.append(ConvLSTMCell(input_dim=cur_input_dim,
                                           hidden_dim=self.hidden_dim[i],
                                           kernel_size=self.kernel_size[i],
-                                          bias=self.bias))
+                                          bias=self.bias,
+                                          independent=independent))
 
         self.cell_list = nn.ModuleList(cell_list)
 
@@ -269,7 +291,8 @@ class ConvLSTMEnsemble(nn.Module):
     """
 
     def __init__(self, n_models, input_dim, hidden_dim, kernel_size, num_layers,
-                 final_kernel_size=1, batch_input=1, bias=True, final_bias=True, return_all_layers=False, final_act="sigmoid", noise=0.):
+                 final_kernel_size=1, batch_input=1, bias=True, final_bias=True,
+                 return_all_layers=False, independent=False, final_act="sigmoid", noise=0.):
         super(ConvLSTMEnsemble, self).__init__()
 
         self.is_ensemble = True
@@ -297,6 +320,7 @@ class ConvLSTMEnsemble(nn.Module):
                                    batch_input=batch_input,
                                    bias=bias,
                                    final_bias=final_bias,
+                                   independent=independent,
                                    return_all_layers=return_all_layers,
                                    final_act=final_act))
 
