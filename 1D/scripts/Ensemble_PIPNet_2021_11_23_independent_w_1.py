@@ -91,7 +91,7 @@ train_pars = dict(batch_size = 16, # Dataset batch size
                   n_eval = 100, # Number of batches in the evaluation
                   max_checkpoints = 100, # Maximum number of checkpoints before finishing training
                   out_dir = "../data/Ensemble_PIPNet_2021_11_23_independent_w_10/", # Output directory
-                  change_factor = {50: 0.}, # Checkpoints where
+                  change_factor = {25: 0.}, # Checkpoints where
                   avg_models = False,
                   device = "cuda" if torch.cuda.is_available() else "cpu",
                   monitor_end = "\n"
