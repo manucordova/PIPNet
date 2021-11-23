@@ -55,7 +55,6 @@ class ConvLSTMCell(nn.Module):
         h_cur, c_cur = cur_state
 
         combined = torch.cat([input_tensor, h_cur], dim=1)  # concatenate along channel axis
-
         combined_conv = self.conv(combined)
 
         if self.independent:
@@ -79,6 +78,7 @@ class ConvLSTMCell(nn.Module):
         h_cur, c_cur = cur_state
 
         combined = torch.cat([input_tensor, h_cur], dim=1)  # concatenate along channel axis
+        combined_conv = self.conv(combined)
 
         if self.independent:
             cc_i, cc_f, cc_g = torch.split(combined_conv, self.hidden_dim, dim=1)
