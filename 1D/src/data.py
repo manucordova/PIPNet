@@ -141,11 +141,16 @@ class PIPDataset(torch.utils.data.Dataset):
         # Fourier transform
         isos = np.real(np.fft.fft(fids, axis=1))
 
+        # Randomize intensity
+        da = self.iso_int[1] - self.iso_int[0]
+        a = self.iso_int[0] + (np.random.rand(n) * da)
+        isos *= a[:, np.newaxis]
+
         # Make isotropic spectra positive
         if self.positive:
             isos[np.real(isos) < 0.] = 0.
 
-        iso = np.expand_dims(np.mean(isos, axis=0), 0)
+        iso = np.expand_dims(np.sum(isos, axis=0), 0)
 
         return n, isos, iso
 
@@ -306,19 +311,17 @@ class PIPDataset(torch.utils.data.Dataset):
 
         # Get real spectra integrals
         int0 = np.sum(iso)
-        max0 = np.max(iso)
-        target_int = int0 / max0
         ints = np.sum(brd_specs[:,0], axis=1)
 
         # Normalize isotropic spectrum
-        iso *= self.scale_iso / max0
+        iso /= self.iso_norm
         iso += self.offset
-        specs *= self.scale_iso / max0 / specs.shape[0]
+        specs /= self.iso_norm
         specs += self.offset
 
         # Normalize broadened spectra
-        fac = (target_int / ints)[:, np.newaxis, np.newaxis]
-        brd_specs *= fac
+        fac = (int0 / ints)[:, np.newaxis, np.newaxis]
+        brd_specs *= fac / self.brd_norm
         brd_specs += self.offset
 
         return iso, specs, brd_specs
