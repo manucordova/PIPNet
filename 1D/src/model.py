@@ -172,6 +172,10 @@ class ConvLSTM(nn.Module):
 
         if final_act == "sigmoid":
             self.final_act = nn.Sigmoid()
+        elif final_act == "softplus":
+            self.final_act = nn.Softplus()
+        elif final_act == "selu":
+            self.final_act = nn.SELU()
         elif final_act == "linear":
             self.final_act = nn.Identity()
         else:
@@ -358,7 +362,8 @@ class ConvLSTMEnsemble(nn.Module):
 
 class CustomLoss(nn.Module):
     def __init__(self, srp_w=1., srp_exp=2., srp_offset=1., srp_fac=0.,
-                 brd_w=0, brd_sig=5, brd_len=25, brd_exp=1., brd_offset=1., brd_fac=0., return_components=False, device="cpu"):
+                 brd_w=0, brd_sig=5, brd_len=25, brd_exp=2., brd_offset=1., brd_fac=0.,
+                 int_w=0., int_exp=2., return_components=False, device="cpu"):
         super(CustomLoss, self).__init__()
 
         self.srp_w = srp_w
@@ -370,6 +375,9 @@ class CustomLoss(nn.Module):
         self.brd_exp = brd_exp
         self.brd_offset = brd_offset
         self.brd_fac = brd_fac
+
+        self.int_w = int_w
+        self.int_exp = int_exp
 
         self.return_components = return_components
 
@@ -420,7 +428,8 @@ class CustomLoss(nn.Module):
         # Compute the scaling
         w = torch.ones_like(x) * self.srp_offset
 
-        w = torch.max(w, y_trg * self.srp_fac)
+        if self.srp_fac > 0.:
+            w = torch.max(w, y_trg * self.srp_fac)
 
         x = x * w
 
@@ -450,26 +459,46 @@ class CustomLoss(nn.Module):
         # Compute the scaling
         w = torch.ones_like(x) * self.brd_offset
 
-        w = torch.max(w, y2_trg * self.brd_fac)
+        if self.brd_fac > 0.:
+            w = torch.max(w, y2_trg * self.brd_fac)
 
         x = x * w
 
         return torch.mean(x) * self.brd_w
 
+    def int_loss(self, y, y_trg):
+        """
+        Intergral loss: Compare spectra integral
+        """
+
+        x = torch.mean(y, dim=-1) - torch.mean(y_trg, dim=-1)
+
+        x = torch.pow(torch.abs(x), self.int_exp)
+
+        return torch.mean(x) * self.int_w
+
     def __call__(self, y, y_trg):
 
-        srp_loss = 0.
-        brd_loss = 0.
+        components = []
+        tot_loss = 0.
+
         if self.srp_w > 0.:
-            srp_loss = self.srp_loss(y, y_trg)
+            tmp_loss = self.srp_loss(y, y_trg)
+            tot_loss += tmp_loss
+            components.append(float(tmp_loss.detach().cpu()))
 
         if self.brd_w > 0.:
-            brd_loss = self.brd_loss(y, y_trg)
+            tmp_loss = self.brd_loss(y, y_trg)
+            tot_loss += tmp_loss
+            components.append(float(tmp_loss.detach().cpu()))
 
-        tot_loss = srp_loss + brd_loss
+        if self.int_w > 0.:
+            tmp_loss = self.int_loss(y, y_trg)
+            tot_loss += tmp_loss
+            components.append(float(tmp_loss.detach().cpu()))
 
         if self.return_components:
 
-            return tot_loss, [float(srp_loss.detach().cpu()), float(brd_loss.detach().cpu())]
+            return tot_loss, components
 
         return tot_loss
