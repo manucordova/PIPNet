@@ -113,7 +113,7 @@ model_pars = dict(n_models = 5,
                   final_bias = True,
                   independent = True,
                   return_all_layers = True,
-                  final_act = "sigmoid",
+                  final_act = "linear",
                   noise = 2.e-4,
                  )
 
