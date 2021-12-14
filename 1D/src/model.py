@@ -362,7 +362,7 @@ class ConvLSTMEnsemble(nn.Module):
 
 class CustomLoss(nn.Module):
     def __init__(self, srp_w=1., srp_exp=2., srp_offset=1., srp_fac=0.,
-                 brd_w=0, brd_sig=5, brd_len=25, brd_exp=2., brd_offset=1., brd_fac=0.,
+                 brd_w=0., brd_sig=5, brd_len=25, brd_exp=2., brd_offset=1., brd_fac=0.,
                  int_w=0., int_exp=2., return_components=False, device="cpu"):
         super(CustomLoss, self).__init__()
 
