@@ -104,7 +104,7 @@ train_pars = dict(batch_size = 16, # Dataset batch size
 
 model_pars = dict(n_models = 5,
                   input_dim = 2,
-                  hidden_dim = 128,
+                  hidden_dim = 64,
                   kernel_size = [5, 15, 25, 35, 45, 55],
                   num_layers = 6,
                   final_kernel_size = 1,

@@ -95,7 +95,7 @@ train_pars = dict(batch_size = 16, # Dataset batch size
                   checkpoint = 1000, # Perform evaluation after that many batches
                   n_eval = 100, # Number of batches in the evaluation
                   max_checkpoints = 100, # Maximum number of checkpoints before finishing training
-                  out_dir = "../data/Ensemble_PIPNet_2021_12_14/", # Output directory
+                  out_dir = "../data/Ensemble_PIPNet_2021_12_15_w_10/", # Output directory
                   change_factor = {50: 0.}, # Checkpoints where
                   avg_models = False,
                   device = "cuda" if torch.cuda.is_available() else "cpu",
@@ -104,7 +104,7 @@ train_pars = dict(batch_size = 16, # Dataset batch size
 
 model_pars = dict(n_models = 5,
                   input_dim = 2,
-                  hidden_dim = 128,
+                  hidden_dim = 64,
                   kernel_size = [5, 15, 25, 35, 45, 55],
                   num_layers = 6,
                   final_kernel_size = 1,
