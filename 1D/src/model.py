@@ -174,8 +174,6 @@ class ConvLSTM(nn.Module):
             self.final_act = nn.Sigmoid()
         elif final_act == "softplus":
             self.final_act = nn.Softplus()
-        elif final_act == "selu":
-            self.final_act = nn.SELU()
         elif final_act == "linear":
             self.final_act = nn.Identity()
         else:
