@@ -102,6 +102,112 @@ class ConvLSTMCell(nn.Module):
                 torch.zeros(batch_size, self.hidden_dim, size, device=self.conv.weight.device))
 
 
+
+class Conv_Block(nn.Module):
+
+    def __init__(self, in_ch, out_ch, k):
+        super(Conv_Block, self).__init__()
+
+        p = k // 2
+
+        self.conv = nn.Sequential(nn.Conv1d(in_ch, out_ch, k, padding=p),
+                                  nn.BatchNorm1d(out_ch),
+                                  nn.ReLU(inplace=True),
+                                  nn.Conv1d(out_ch, out_ch, k, padding=p),
+                                  nn.BatchNorm1d(out_ch),
+                                  nn.ReLU(inplace=True))
+
+    def forward(self, x):
+
+        x = self.conv(x)
+        return x
+
+
+
+class Down_Block(nn.Module):
+
+    def __init__(self, in_ch, out_ch, k_mp, k_conv):
+        super(Down_Block, self).__init__()
+
+        self.mp = nn.MaxPool1d(k_mp, stride=k_mp)
+        self.cv = Conv_Block(in_ch, out_ch, k_conv)
+
+    def forward(self, x):
+
+        x = self.mp(x)
+        x = self.cv(x)
+        return x
+
+
+
+class Up_Block(nn.Module):
+
+    def __init__(self, in_ch, out_ch, add_ch, k_up, k_conv):
+        super(Up_Block, self).__init__()
+
+        self.up = nn.Upsample(scale_factor=k_up)
+        self.cv1 = Conv_Block(in_ch, out_ch, k_conv)
+        self.cv2 = Conv_Block(add_ch + out_ch, out_ch, k_conv)
+
+    def forward(self, x1, x2):
+
+        x = self.up(x1)
+        x = self.cv1(x)
+        x = torch.cat((x, x2), dim=1)
+        x = self.cv2(x)
+        return x
+
+
+class UNET(nn.Module):
+
+    """
+    """
+
+    def __init__(self, input_dim, channels, output_dim,
+                 k_scale, k_conv, depth, ch_factor=2, b=True):
+        super(UNET, self).__init__()
+
+        if isinstance(channels, list) and len(channels) != depth:
+            raise ValueError("The number of channels should be equal to the depth of the UNET")
+        elif not isinstance(channels, list):
+            channels = [channels]
+            for i in range(depth-1):
+                channels.append(channels[-1] * ch_factor)
+
+        dn = []
+        chs = [input_dim]
+        chs.extend(channels)
+        in_chs = chs[:-1]
+        for c1, c2 in zip(chs[:-1], chs[1:]):
+            dn.append(Down_Block(c1, c2, k_scale, k_conv))
+        self.dn = nn.ModuleList(dn)
+
+        up = []
+        chs = channels[::-1]
+        chs.append(output_dim)
+        for c1, c2, c3 in zip(chs[:-1], chs[1:], in_chs[::-1]):
+            up.append(Up_Block(c1, c2, c3, k_scale, k_conv))
+        self.up = nn.ModuleList(up)
+
+        p = k_conv // 2
+        self.conv = nn.Conv1d(output_dim, output_dim,
+                              kernel_size=k_conv, padding=p, bias=b)
+
+    def forward(self, x):
+
+        x_tmp = []
+
+        for block in self.dn:
+            x_tmp.append(x.clone())
+            x = block(x)
+
+        for block, x2 in zip(self.up, x_tmp[::-1]):
+            x = block(x, x2)
+
+        return self.conv(x)
+
+
+
 class ConvLSTM(nn.Module):
 
     """
@@ -128,8 +234,12 @@ class ConvLSTM(nn.Module):
     """
 
     def __init__(self, input_dim, hidden_dim, kernel_size, num_layers,
-                 final_kernel_size=1, batch_input=1, bias=True, final_bias=True,
-                 independent=False, return_all_layers=False, final_act="sigmoid", noise=0.):
+                 batch_input=1, bias=True, final_bias=True,
+                 independent=False, return_all_layers=False,
+                 final_conv_type="cnn", final_conv_scale=2,
+                 final_conv_channels=16, final_conv_depth=4,
+                 final_conv_factor=2, final_kernel_size=1,
+                 final_act="sigmoid", noise=0.):
         super(ConvLSTM, self).__init__()
 
         # Make sure that both `kernel_size` and `hidden_dim` are lists having len == num_layers
@@ -148,6 +258,10 @@ class ConvLSTM(nn.Module):
         self.num_layers = num_layers
         self.final_kernel_size = final_kernel_size
         self.final_padding = final_kernel_size // 2
+        self.final_conv_channels = final_conv_channels
+        self.final_conv_depth = final_conv_depth
+        self.final_conv_scale = final_conv_scale
+        self.final_conv_factor = final_conv_factor
         self.bias = bias
         self.final_bias = final_bias
         self.return_all_layers = return_all_layers
@@ -164,11 +278,20 @@ class ConvLSTM(nn.Module):
 
         self.cell_list = nn.ModuleList(cell_list)
 
-        self.final_conv = nn.Conv1d(in_channels=self.hidden_dim[-1],
-                                    out_channels=1,
-                                    kernel_size=self.final_kernel_size,
-                                    padding=self.final_padding,
-                                    bias=self.final_bias)
+        if final_conv_type == "cnn":
+            self.final_conv = nn.Conv1d(in_channels=self.hidden_dim[-1],
+                                        out_channels=1,
+                                        kernel_size=self.final_kernel_size,
+                                        padding=self.final_padding,
+                                        bias=self.final_bias)
+
+        elif final_conv_type == "unet":
+            self.final_conv = UNET(self.hidden_dim[-1], self.final_conv_channels, 1,
+                                   self.final_kernel_size, self.final_conv_scale,
+                                   self.final_conv_depth, b=self.final_bias, ch_factor=self.final_conv_factor)
+
+        else:
+            raise ValueError("Unknown final convolution type")
 
         if final_act == "sigmoid":
             self.final_act = nn.Sigmoid()
@@ -293,8 +416,12 @@ class ConvLSTMEnsemble(nn.Module):
     """
 
     def __init__(self, n_models, input_dim, hidden_dim, kernel_size, num_layers,
-                 final_kernel_size=1, batch_input=1, bias=True, final_bias=True,
-                 return_all_layers=False, independent=False, final_act="sigmoid", noise=0.):
+                 batch_input=1, bias=True, final_bias=True,
+                 return_all_layers=False, independent=False,
+                 final_conv_type="cnn", final_conv_scale=2,
+                 final_conv_channels=16, final_conv_depth=4,
+                 final_conv_factor=2, final_kernel_size=1,
+                 final_act="sigmoid", noise=0.):
         super(ConvLSTMEnsemble, self).__init__()
 
         self.is_ensemble = True
@@ -318,13 +445,15 @@ class ConvLSTMEnsemble(nn.Module):
                 fks = final_kernel_size
 
             models.append(ConvLSTM(input_dim, hidden_dim, ks, num_layers,
-                                   final_kernel_size=fks,
                                    batch_input=batch_input,
                                    bias=bias,
                                    final_bias=final_bias,
                                    independent=independent,
                                    return_all_layers=return_all_layers,
-                                   final_act=final_act))
+                                   final_conv_type="cnn", final_conv_scale=2,
+                                   final_conv_channels=16, final_conv_depth=4,
+                                   final_conv_factor=2, final_kernel_size=fks,
+                                   final_act="sigmoid", ))
 
         self.models = nn.ModuleList(models)
 
