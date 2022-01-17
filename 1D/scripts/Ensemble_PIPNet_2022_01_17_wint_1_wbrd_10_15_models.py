@@ -128,7 +128,14 @@ dataset = data.PIPDataset(**data_pars)
 
 net = model.ConvLSTMEnsemble(**model_pars)
 
-net = nn.DataParallel(net).to(train_pars["device"])
+class MyDataParallel(torch.nn.DataParallel):
+    def __getattr__(self, name):
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            return getattr(self.module, name)
+
+net = nn.MyDataParallel(net).to(train_pars["device"])
 
 opt = torch.optim.Adam(net.parameters(), lr=1e-3, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
 
