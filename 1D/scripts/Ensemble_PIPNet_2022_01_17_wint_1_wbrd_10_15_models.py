@@ -128,7 +128,7 @@ dataset = data.PIPDataset(**data_pars)
 
 net = model.ConvLSTMEnsemble(**model_pars)
 
-class MyDataParallel(torch.nn.DataParallel):
+class MyDataParallel(nn.DataParallel):
     def __getattr__(self, name):
         try:
             return super().__getattr__(name)
