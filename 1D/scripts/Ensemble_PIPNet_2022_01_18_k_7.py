@@ -84,7 +84,7 @@ loss_pars = dict(srp_w = 1.,
                  brd_offset = 1.,
                  brd_fac = 0.,
 
-                 int_w = 1.,
+                 int_w = 0.1,
                  int_exp = 2.,
 
                  return_components = True,
@@ -94,20 +94,20 @@ train_pars = dict(batch_size = 16, # Dataset batch size
                   num_workers = 20, # Number of parallel processes to generate data
                   checkpoint = 1000, # Perform evaluation after that many batches
                   n_eval = 100, # Number of batches in the evaluation
-                  max_checkpoints = 150, # Maximum number of checkpoints before finishing training
-                  out_dir = "../data/Ensemble_PIPNet_2022_01_17_wint_1_wbrd_10_15_models/", # Output directory
+                  max_checkpoints = 100, # Maximum number of checkpoints before finishing training
+                  out_dir = "../data/Ensemble_PIPNet_2022_01_18_k_7/", # Output directory
                   change_factor = {50: 0.}, # Checkpoints where
                   avg_models = False,
                   device = "cuda" if torch.cuda.is_available() else "cpu",
                   monitor_end = "\n"
                  )
 
-model_pars = dict(n_models = 15,
+model_pars = dict(n_models = 5,
                   input_dim = 2,
                   hidden_dim = 64,
                   kernel_size = [5, 15, 25, 35, 45, 55],
                   num_layers = 6,
-                  final_kernel_size = 1,
+                  final_kernel_size = 7,
                   batch_input = 4,
                   bias = True,
                   final_bias = True,
