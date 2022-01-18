@@ -13,47 +13,49 @@ def evaluate(data_generator, net, loss, train_pars, i_chk):
 
     net.eval()
 
-    val_losses = []
-    val_components = []
-    # Dummy loss components if not returned
-    components = [0., 0.]
+    with torch.no_grad():
 
-    # Evaluation loop
-    for val_batch, (X, _, y) in enumerate(data_generator):
+        val_losses = []
+        val_components = []
+        # Dummy loss components if not returned
+        components = [0., 0.]
 
-        X = X.to(train_pars["device"])
-        y = y.to(train_pars["device"])
+        # Evaluation loop
+        for val_batch, (X, _, y) in enumerate(data_generator):
 
-        # Forward pass
-        y_pred, y_std, ys_pred = net(X)
+            X = X.to(train_pars["device"])
+            y = y.to(train_pars["device"])
 
-        if net.return_all_layers:
-            y = y.repeat((1, y_pred.shape[-2], 1))
+            # Forward pass
+            y_pred, y_std, ys_pred = net(X)
 
-        # Compute loss
-        if not net.is_ensemble or train_pars["avg_models"]:
-            if loss.return_components:
-                l, components = loss(y_pred, y)
+            if net.return_all_layers:
+                y = y.repeat((1, y_pred.shape[-2], 1))
+
+            # Compute loss
+            if not net.is_ensemble or train_pars["avg_models"]:
+                if loss.return_components:
+                    l, components = loss(y_pred, y)
+                else:
+                    l = loss(y_pred, y)
             else:
-                l = loss(y_pred, y)
-        else:
-            ys = torch.cat([torch.unsqueeze(y.clone(), 0) for _ in range(ys_pred.shape[0])])
-            if loss.return_components:
-                l, components = loss(ys_pred, ys)
-            else:
-                l = loss(ys_pred, ys)
+                ys = torch.cat([torch.unsqueeze(y.clone(), 0) for _ in range(ys_pred.shape[0])])
+                if loss.return_components:
+                    l, components = loss(ys_pred, ys)
+                else:
+                    l = loss(ys_pred, ys)
 
-        # Update monitoring lists
-        val_losses.append(float(l.detach()))
-        val_components.append(components)
+            # Update monitoring lists
+            val_losses.append(float(l.detach()))
+            val_components.append(components)
 
-        pp = "    Validation batch {: 4d}: ".format(val_batch + 1)
-        pp += "loss = {: 1.4e}, ".format(val_losses[-1])
-        pp += "mean loss = {: 1.4e}...".format(np.mean(val_losses))
-        print(pp, end=train_pars["monitor_end"])
+            pp = "    Validation batch {: 4d}: ".format(val_batch + 1)
+            pp += "loss = {: 1.4e}, ".format(val_losses[-1])
+            pp += "mean loss = {: 1.4e}...".format(np.mean(val_losses))
+            print(pp, end=train_pars["monitor_end"])
 
-        if (val_batch + 1) >= train_pars["n_eval"]:
-            break
+            if (val_batch + 1) >= train_pars["n_eval"]:
+                break
 
     net.train()
 

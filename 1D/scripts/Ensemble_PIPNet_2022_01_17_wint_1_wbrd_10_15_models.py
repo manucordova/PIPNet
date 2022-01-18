@@ -91,7 +91,7 @@ loss_pars = dict(srp_w = 1.,
                 )
 
 train_pars = dict(batch_size = 16, # Dataset batch size
-                  num_workers = 40, # Number of parallel processes to generate data
+                  num_workers = 20, # Number of parallel processes to generate data
                   checkpoint = 1000, # Perform evaluation after that many batches
                   n_eval = 100, # Number of batches in the evaluation
                   max_checkpoints = 150, # Maximum number of checkpoints before finishing training
