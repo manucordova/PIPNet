@@ -297,10 +297,7 @@ class ConvLSTMEnsemble(nn.Module):
     def __init__(self, n_models, input_dim, hidden_dim, kernel_size, num_layers,
                  batch_input=1, bias=True, final_bias=True,
                  return_all_layers=False, independent=False,
-                 final_conv_type="cnn", final_conv_scale=2,
-                 final_conv_channels=16, final_conv_depth=4,
-                 final_conv_factor=2, final_kernel_size=1,
-                 final_act="sigmoid", noise=0.):
+                 final_kernel_size=1, final_act="sigmoid", noise=0.):
         super(ConvLSTMEnsemble, self).__init__()
 
         self.is_ensemble = True
@@ -329,10 +326,7 @@ class ConvLSTMEnsemble(nn.Module):
                                    final_bias=final_bias,
                                    independent=independent,
                                    return_all_layers=return_all_layers,
-                                   final_conv_type="cnn", final_conv_scale=2,
-                                   final_conv_channels=16, final_conv_depth=4,
-                                   final_conv_factor=2, final_kernel_size=fks,
-                                   final_act="sigmoid", ))
+                                   final_kernel_size=fks, final_act="sigmoid"))
 
         self.models = nn.ModuleList(models)
 
