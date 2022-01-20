@@ -247,6 +247,74 @@ class PIPDataset(torch.utils.data.Dataset):
 
         return wr, ls, gs, ss, ps
 
+    def gen_mas2_params(self, n):
+        """
+        Generate second-order MAS parameters (rate, broadening, shift)
+
+        Input:      - n     Number of peaks in the spectrum
+
+        Outputs:    - ls    MAS^2-dependent Lorentzian broadening for each peak
+                    - gs    MAS^2-dependent Gaussian broadening for each peak
+                    - ss    MAS^2-dependent shift for each peak
+        """
+
+        if isinstance(self.mas2_l_range[0], list):
+            # Randomly select broadening range
+            ls2 = []
+            gs2 = []
+            ss2 = []
+            for _ in range(n):
+                # Randomly select broadening range
+                p = np.random.random()
+                i = 0
+                p_tot = self.mas2_p[i]
+                while p > p_tot:
+                    i += 1
+                    p_tot += self.mas2_p[i]
+
+                # Generate MAS-dependent Lorentzian broadening (uniform distribution)
+                dl = self.mas2_l_range[i][1] - self.mas2_l_range[i][0]
+                l0 = self.mas2_l_range[i][0]
+                ls2.append(l0 + (np.random.rand() * dl))
+
+                # Generate MAS-dependent Gaussian broadening (uniform distribution)
+                dg = self.mas2_g_range[i][1] - self.mas2_g_range[i][0]
+                g0 = self.mas2_g_range[i][0]
+                gs2.append(g0 + (np.random.rand() * dg))
+
+                # Generate MAS-dependent shift
+                ds = self.mas2_s_range[i][1] - self.mas2_s_range[i][0]
+                s0 = self.mas2_s_range[i][0]
+                ss2.append(s0 + (np.random.rand() * ds))
+
+            ls2 = np.array(ls2)
+            gs2 = np.array(gs2)
+            ss2 = np.array(ss2)
+
+        else:
+            # Generate MAS-dependent Lorentzian broadening (uniform distribution)
+            dl = self.mas2_l_range[1] - self.mas2_l_range[0]
+            l0 = self.mas2_l_range[0]
+            ls2 = l0 + (np.random.rand(n) * dl)
+
+            # Generate MAS-dependent Gaussian broadening (uniform distribution)
+            dg = self.mas2_g_range[1] - self.mas2_g_range[0]
+            g0 = self.mas2_g_range[0]
+            gs2 = g0 + (np.random.rand(n) * dg)
+
+            # Generate MAS-dependent shift
+            ds = self.mas2_s_range[1] - self.mas2_s_range[0]
+            s0 = self.mas2_s_range[0]
+            ss2 = s0 + (np.random.rand(n) * ds)
+
+        if self.debug:
+            print("\n  Generating MAS^2-dependent parameters...")
+            print("                 l [Hz^2] |  g [Hz^3] |  s [Hz^2]")
+            for i, (l, g, s) in enumerate(zip(ls2, gs2, ss2)):
+                print(f"    Peak {i+1: 3.0f}    {l: 2.2e} | {g: 2.2e} | {s: 2.2e}")
+
+        return ls2, gs2, ss2
+
     def mas_broaden(self, specs, wr, ls, gs, ss, ps):
         """
         Broaden isotropic spectra with MAS-dependent parameters
@@ -280,6 +348,72 @@ class PIPDataset(torch.utils.data.Dataset):
 
             # Gaussian broadening
             e2 = np.einsum("ij,k->ijk", -1 * G / wr[i], np.square(self.t)).astype(complex)
+
+            # Apply exponential
+            brd_specs[i] = np.matmul(np.expand_dims(specs, 1), np.exp(e1 + e2)).squeeze()
+
+            # Apply phase
+            if self.peakwise_phase:
+                P = np.tile(p, n_pts).reshape(n_pts, n_pks).T
+            else:
+                P = np.ones((n_pks, n_pts)) * p
+
+            brd_specs[i] *= np.exp(-1j * P)
+
+        brd_specs[:, :, 0] /= 2.
+
+        # Make output (n_max, n_dim, n_pts)
+        data = np.fft.fft(brd_specs, axis=-1)
+        if self.encode_imag:
+            output = np.empty((n_mas, 2, n_pts))
+            output[:, 0, :] = np.mean(np.real(data), axis=1)
+            output[:, 1, :] = np.mean(np.imag(data), axis=1)
+
+        else:
+            output = np.empty((n_mas, 1, n_pts))
+            output[:, 0, :] = np.mean(np.real(data), axis=1)
+
+        return output
+
+    def mas2_broaden(self, specs, wr, ls, ls2, gs, gs2, ss, ss2, ps):
+        """
+        Broaden isotropic spectra with MAS^2-dependent parameters
+
+        Inputs: - specs         Isotropic spectrum for each peak
+                - wr            MAS rates
+                - ls            MAS-dependent Lorentzian broadening for each peak
+                - ls2           MAS-dependent Lorentzian broadening for each peak
+                - gs            MAS-dependent Gaussian broadening for each peak
+                - gs2           MAS-dependent Gaussian broadening for each peak
+                - ss            MAS-dependent shift for each peak
+                - ss2           MAS-dependent shift for each peak
+                - ps            MAS-dependent phase for each spectrum/peak
+
+        Output: - brd_specs     Broadened spectra
+        """
+
+        n_mas = wr.shape[0]
+        n_pks, n_pts = specs.shape
+        r = np.arange(1., n_pts+1) / n_pts
+
+        brd_specs = np.empty((n_mas, n_pks, n_pts), dtype=complex)
+
+        # Get MAS-dependent matrices of parameters
+        L = np.tile(ls, n_pts).reshape(n_pts, n_pks).T
+        L2 = np.tile(ls2, n_pts).reshape(n_pts, n_pks).T
+        G = np.tile(gs, n_pts).reshape(n_pts, n_pks).T
+        G2 = np.tile(gs2, n_pts).reshape(n_pts, n_pks).T
+        S = np.tile(ss, n_pts).reshape(n_pts, n_pks).T
+        S2 = np.tile(ss2, n_pts).reshape(n_pts, n_pks).T
+
+        for i, p in zip(range(n_mas), ps):
+
+            # Shift and Lorentzian broadening
+            e1 = (1j * 2 * np.pi * (r * self.Fs + (S / wr[i]) + (S2 / (wr[i]**2)))) - L / wr[i] - L2 / (wr[i]**2)
+            e1 = np.einsum("ij,k->ijk", e1, self.t)
+
+            # Gaussian broadening
+            e2 = np.einsum("ij,k->ijk", -1 * G / wr[i] - G2 / (wr[i]**2), np.square(self.t)).astype(complex)
 
             # Apply exponential
             brd_specs[i] = np.matmul(np.expand_dims(specs, 1), np.exp(e1 + e2)).squeeze()
@@ -379,8 +513,13 @@ class PIPDataset(torch.utils.data.Dataset):
         # Generate MAS-dependent parameters
         wr, ls, gs, ss, ps = self.gen_mas_params(n)
 
-        # Broaden isotropic spectrum with MAS-dependent parameters
-        brd_specs = self.mas_broaden(specs, wr, ls, gs, ss, ps)
+        if self.mas_w2 and np.random.random() < self.mas_w2_p:
+            ls2, gs2, ss2 = self.gen_mas2_params(n)
+            # Broaden isotropic spectrum with MAS-dependent parameters
+            brd_specs = self.mas2_broaden(specs, wr, ls, ls2, gs, gs2, ss, ss2, ps)
+        else:
+            # Broaden isotropic spectrum with MAS-dependent parameters
+            brd_specs = self.mas_broaden(specs, wr, ls, gs, ss, ps)
 
         # Set the minimum of each spectrum to zero
         brd_specs -= np.min(brd_specs[:, 0], axis=1)[:, np.newaxis, np.newaxis]
