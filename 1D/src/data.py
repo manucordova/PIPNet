@@ -20,6 +20,8 @@ class PIPDataset(torch.utils.data.Dataset):
         Initialize the class
         """
 
+        self.mas_w2 = False
+
         # Set parameters
         self.__dict__.update(kwargs)
 
