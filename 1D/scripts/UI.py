@@ -10,9 +10,7 @@ import sys
 import copy
 
 import torch
-torch.set_num_threads=4
 from torch import nn
-from torchsummary import summary
 
 import importlib
 
