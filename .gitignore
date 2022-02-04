@@ -134,3 +134,6 @@ dmypy.json
 *.DS_Store
 *.out
 *.log
+
+gradio_queue*
+*.zip
