@@ -10,11 +10,14 @@ import sys
 import copy
 
 import torch
+torch.set_num_threads=4
 from torch import nn
+from torchsummary import summary
 
 import importlib
 
 import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.animation as anm
 
@@ -295,15 +298,19 @@ net.load_state_dict(torch.load(in_dir + f"checkpoint_{best_chk+1}_network", map_
 net.to(device)
 
 
-# In[10]:
+# In[29]:
 
 
 def load_topspin_spectrum(zfile, d):
+
+    log = ""
 
     pd = d + "pdata/1/"
 
     fr = pd + "1r"
     fi = pd + "1i"
+
+    wr = None
 
     try:
         with zfile.open(fr, "r") as F:
@@ -318,7 +325,7 @@ def load_topspin_spectrum(zfile, d):
             lines = F.read().decode('utf-8').split("\n")
 
         for l in lines:
-            if l.startswith("##$MASR"):
+            if l.startswith("##$MASR="):
                 wr = int(l.split("=")[1].strip())
             if l.startswith("##$TD="):
                 TD = int(l.split("=")[1].strip())
@@ -337,9 +344,9 @@ def load_topspin_spectrum(zfile, d):
 
             if l.startswith("##$SF="):
                 SF = float(l.split("=")[1].strip())
+
     except:
-        print(f"WARNING: dataset {d} not loaded properly!")
-        return None, None, None, None, None
+        return None, None, None, None, None, log
 
     AQ = TD / (2 * SW)
 
@@ -347,22 +354,39 @@ def load_topspin_spectrum(zfile, d):
 
     ppm = hz / SF
 
-    return dr, di, wr, ppm, hz
+    return dr, di, wr, ppm, hz, log
 
 
-# In[11]:
+# In[30]:
 
 
-def extract_exp_topspin(zfile, d0):
+def extract_exp_topspin(zfile, d0, v=False, custom_ws=None, n=1000):
+
+    logs = ""
 
     X = []
     ws = []
-    for d in zfile.namelist():
-        if d.startswith(d0) and d.endswith("/") and d.count("/") == 2 and d.split("/")[1].isnumeric():
-            Xi, _, wr, ppm, hz = load_topspin_spectrum(zfile, d)
+    ppm = None
+    for i in range(n):
+        d = f"{d0}{i+1}/"
+        if d in zfile.namelist():
+            if v > 1:
+                logs += f"INFO: loading dataset {d}\n"
+            Xi, _, wr, tmp_ppm, hz, log = load_topspin_spectrum(zfile, d)
             if hz is not None:
                 X.append(Xi)
                 ws.append(wr)
+                ppm = tmp_ppm
+            elif v > 0:
+                logs += f"WARNING: dataset {d} could not be loaded!\n"
+            logs += log
+
+    if len(X) == 0:
+        logs += f"ERROR: no dataset from {d0} could be loaded!\n"
+        return None, None, None, logs
+
+    if custom_ws is not None:
+        ws = custom_ws
 
     sorted_inds = np.argsort(ws)
 
@@ -370,10 +394,10 @@ def extract_exp_topspin(zfile, d0):
 
     sorted_X = np.array([X[i] for i in sorted_inds])
 
-    return ppm, sorted_ws, sorted_X
+    return ppm, sorted_ws, sorted_X, logs
 
 
-# In[12]:
+# In[31]:
 
 
 def make_input(X, ws, x_max=0.25):
@@ -405,7 +429,7 @@ def make_input(X, ws, x_max=0.25):
     return X[inds], X_torch, ws[inds]
 
 
-# In[13]:
+# In[32]:
 
 
 def plot_exp_vs_pred(ppm, X, y_pred, y_std, y_pred_scale=0.5, x_offset=0.1, xl=[20., -5.], c0=[0., 1., 1.], dc = [0., -1., 0.]):
@@ -471,7 +495,7 @@ def plot_exp_vs_pred(ppm, X, y_pred, y_std, y_pred_scale=0.5, x_offset=0.1, xl=[
     return fig, b
 
 
-# In[14]:
+# In[33]:
 
 
 def make_file(x):
@@ -490,7 +514,7 @@ def make_file(x):
     return pp
 
 
-# In[17]:
+# In[34]:
 
 
 def zip_files(files, names, figs=[], fig_names=[]):
@@ -507,17 +531,46 @@ def zip_files(files, names, figs=[], fig_names=[]):
     return out_name
 
 
-# In[18]:
+# In[48]:
 
 
-def make_prediction(file_obj, w0, w1, dw, x0, x1, scale, extend=10):
+def make_prediction(file_obj, str_ws, w0, w1, dw, x0, x1, scale, verbose):
+
+    if verbose == "Errors only":
+        v = 0
+    elif verbose == "Errors and warnings":
+        v = 1
+    else:
+        v = 2
+
+    log = ""
 
     # Load spectra
-    global zfile
     zfile = zp.ZipFile(file_obj.name)
     basename = zfile.namelist()[0]
 
-    ppm, ws, X = extract_exp_topspin(zfile, basename)
+    ppm, ws, X, add_log = extract_exp_topspin(zfile, basename, v=v)
+    log += add_log
+
+    if abs(ppm[1]-ppm[0]) < 0.01 or abs(ppm[1]-ppm[0]) > 0.05 and v > 0:
+        log += "WARNING: the spectral resolution should be around 0.01-0.05 ppm"
+
+    if len(str_ws) > 0:
+
+        try:
+            ws = np.array([int(w) * 1000 for w in str_ws.split(",")])
+        except:
+            log += "ERROR: Could not read the list of MAS rates.\n"
+            log += "  Valid input should contain only comma-separated integers.\n"
+            log += "  e.g. 20,30,40,50,60,70,80,90,100"
+
+    if "ERROR" in log:
+        return log, None, None, None, None
+
+    if v > 1:
+        log += "INFO: Available MAS rates (in order of loaded datasets): "
+        log += ",".join(str(w) for w in ws)
+        log += "\n"
 
     # Restrict spectral range for performance
     i0 = np.where(ppm > x0)[0][-10]
@@ -532,6 +585,11 @@ def make_prediction(file_obj, w0, w1, dw, x0, x1, scale, extend=10):
     w_inds = []
     for w in sel_ws:
         w_inds.append(np.argmin(np.abs(ws - w)))
+
+    if v > 1:
+        log += "INFO: Prediction of the following MAS rates: "
+        log += ",".join(str(w) for w in ws[w_inds])
+        log += "\n"
 
     X_net = X_torch[:, w_inds]
     X_net[:, :, 0] /= torch.max(X_net[:, :, 0]) / scale
@@ -561,22 +619,28 @@ def make_prediction(file_obj, w0, w1, dw, x0, x1, scale, extend=10):
 
     zipped_results = zip_files([make_file(ppm), make_file(y_pred), make_file(y_std)], ["ppm", "pred", "err"], all_figs, fig_names)
 
-    return fig, figs[-1], figs, zipped_results
+    if len(log) == 0:
+        log = "INFO: No issue to report!"
+
+    return log, fig, figs[-1], figs, zipped_results
 
 iface = gr.Interface(fn=make_prediction,
 
                      inputs=[gr.inputs.File(label="ZIP file containing the Topspin dataset"),
+                                             gr.inputs.Textbox(lines=3, default="", placeholder="List of the MAS rate for each spectrum, in kHz (comma-separated). This overwrites the "),
                                              gr.inputs.Slider(minimum=20, maximum=100, step=1, default=30, label="Starting MAS rate [kHz]"),
                                              gr.inputs.Slider(minimum=20, maximum=100, step=1, default=80, label="Final MAS rate [kHz]"),
                                              gr.inputs.Slider(minimum=1, maximum=10, step=1, default=2, label="MAS rate step [kHz]"),
                                              gr.inputs.Number(default=20, label="Left chemical shift limit [ppm]"),
                                              gr.inputs.Number(default=-5, label="Right chemical shift limit [ppm]"),
-                                             gr.inputs.Slider(minimum=0., maximum=1., step=0.01, default=0.2, label="MAS spectra scale (default: 0.2)")],
+                                             gr.inputs.Number(default=0.2, label="MAS spectra scale (default: 0.2)"),
+                                             gr.inputs.Radio(choices=["Errors only", "Errors and warnings", "Errors, warnings and info"], default="Errors and warnings", label="Verbosity level")],
 
-                     outputs=[gr.outputs.Image("plot", label="Final prediction with all spectra used"),
+                     outputs=[gr.outputs.Textbox(label="INFO"),
+                              gr.outputs.Image("plot", label="Final prediction with all spectra used"),
                               gr.outputs.Image("plot", label="Final prediction with final spectrum used"),
                               gr.outputs.Carousel("plot", label="Evolution of the prediction with additional spectra"),
-                              "file"],
+                              gr.outputs.File(label="Downloadable predictions")],
                      title="PIPNet: Prediction of isotropic 1H NMR spectra using deep learning",
                      theme="dark")
 #iface.launch(share=True)
