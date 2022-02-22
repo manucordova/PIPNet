@@ -56,7 +56,7 @@ data_pars = dict(
                  mas_p = [0.8, 0.2],
 
                  # Second-order MAS-dependent parameters
-                 mas_w2 = True,
+                 mas_w2 = False,
                  mas_w2_p = 1.,
                  mas2_lw_range = [[1e11, 5e11], [1e11, 1e12]], # MAS-dependent Gaussian broadening range
                  mas2_m_range = [[5e8, 5e9], [5e8, 5e9]], # MAS-dependent Lorentzian broadening range
@@ -104,7 +104,7 @@ train_pars = dict(batch_size = 16, # Dataset batch size
                   checkpoint = 1000, # Perform evaluation after that many batches
                   n_eval = 100, # Number of batches in the evaluation
                   max_checkpoints = 200, # Maximum number of checkpoints before finishing training
-                  out_dir = "../data/Ensemble_PIPNet_2022_02_21_9_models/", # Output directory
+                  out_dir = "../data/Ensemble_PIPNet_2022_02_21_9_models_wr1/", # Output directory
                   change_factor = {50: 0.}, # Checkpoints where
                   avg_models = False,
                   device = "cuda" if torch.cuda.is_available() else "cpu",

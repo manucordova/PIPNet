@@ -35,7 +35,7 @@ data_pars = dict(
 
                  # Peak parameters
                  pmin = 1, # Minimum number of Gaussians in a peak
-                 pmax = 15, # Maximum number of Gaussians in a peak
+                 pmax = 1, # Maximum number of Gaussians in a peak
                  ds = 0.03, # Spread of chemical shift values for each peak
                  lw = [[5e1, 2e2], [1e2, 1e3]], # Linewidth range for Gaussians
                  iso_p = [0.8, 0.2],
@@ -45,7 +45,7 @@ data_pars = dict(
 
                  # Isotropic parameters
                  nmin = 1, # Minimum number of peaks
-                 nmax = 1, # Maximum number of peaks
+                 nmax = 15, # Maximum number of peaks
                  shift_range = [2000., 10000.], # Chemical shift range
                  positive = True, # Force the spectrum to be positive
 

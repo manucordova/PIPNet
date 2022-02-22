@@ -65,7 +65,7 @@ data_pars = dict(
 
                  mas_phase = 0.1, # Random phase range for MAS spectra
                  peakwise_phase = True, # Whether the phase should be peak-wise or spectrum-wise
-                 encode_imag = False, # Encode the imaginary part of the MAS spectra
+                 encode_imag = True, # Encode the imaginary part of the MAS spectra
                  nw = 24, # Number of MAS rates
                  mas_w_range = [30000, 100000], # MAS rate range
                  random_mas = True,
@@ -104,7 +104,7 @@ train_pars = dict(batch_size = 16, # Dataset batch size
                   checkpoint = 1000, # Perform evaluation after that many batches
                   n_eval = 100, # Number of batches in the evaluation
                   max_checkpoints = 200, # Maximum number of checkpoints before finishing training
-                  out_dir = "../data/Ensemble_PIPNet_2022_02_21_9_models/", # Output directory
+                  out_dir = "../data/Ensemble_PIPNet_2022_02_21_9_models_imag/", # Output directory
                   change_factor = {50: 0.}, # Checkpoints where
                   avg_models = False,
                   device = "cuda" if torch.cuda.is_available() else "cpu",
