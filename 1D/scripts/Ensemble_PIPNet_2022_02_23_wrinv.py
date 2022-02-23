@@ -89,7 +89,7 @@ data_pars = dict(
                  iso_norm = 256., # Normalization factor for peaks
                  brd_norm = 64., # Normalization factor for MAS spectra
                  offset = 0., # Baseline offset
-                 norm_wr = True, # Normalize MAS rate values
+                 norm_wr = False, # Normalize MAS rate values
                  wr_inv = True, # Encode inverse of MAS rate instead of MAS rate
                  wr_factor = 30000.,
                 )
