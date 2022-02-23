@@ -49,23 +49,35 @@ data_pars = dict(
                  shift_range = [2000., 10000.], # Chemical shift range
                  positive = True, # Force the spectrum to be positive
 
+                 # MAS-independent parameters
+                 mas0_lw_range = [0., 0.], # MAS-independent GLS broadening range
+                 mas0_lw_p = [1.],
+                 mas0_m_range = [[0., 0.1], [0., 1.]], # MAS-independent GLS mixing paramter
+                 mas0_m_p = [0.8, 0.2],
+                 mas0_s_range = [0., 0.], # MAS-independent shift range
+                 mas0_s_p = [1.],
+
                  # MAS-dependent parameters
                  mas_lw_range = [[1e7, 1e8], [5e7, 2e8]], # MAS-dependent GLS broadening range
-                 mas_m_range = [[5e3, 5e4], [5e3, 5e4]], # MAS-dependent GLS mixing paramter
-                 mas_s_range = [[-2e5, 2e5], [-2e5, 2e5]], # MAS-dependent shift range
-                 mas_p = [0.8, 0.2],
+                 mas_lw_p = [0.8, 0.2],
+                 mas_m_range = [[1e4, 5e4]], # MAS-dependent GLS mixing paramter
+                 mas_m_p = [1.],
+                 mas_s_range = [-1.5e7, 1.5e7], # MAS-dependent shift range
+                 mas_s_p = [1.],
 
                  # Second-order MAS-dependent parameters
                  mas_w2 = False,
-                 mas_w2_p = 1.,
-                 mas2_lw_range = [[1e11, 5e11], [1e11, 1e12]], # MAS-dependent Gaussian broadening range
-                 mas2_m_range = [[5e8, 5e9], [5e8, 5e9]], # MAS-dependent Lorentzian broadening range
-                 mas2_s_range = [[-5e9, 5e9], [-5e9, 5e9]], # MAS-dependent shift range
-                 mas2_p = [0.8, 0.2],
+                 mas_w2_p = 1.0,
+                 mas2_lw_range = [[1e2, 1e4], [1e8, 1e9]], # Second-order MAS-dependent Gaussian broadening range
+                 mas2_lw_p = [0.5, 0.5],
+                 mas2_m_range = [[0., 10], [1e4, 1e6]], # Second-order MAS-dependent Lorentzian broadening range
+                 mas2_m_p = [0.5, 0.5],
+                 mas2_s_range = [[0., 0.], [-2e11, 2e11]], # Second-order MAS-dependent shift range
+                 mas2_s_p = [0.8, 0.2],
 
-                 mas_phase = 0.1, # Random phase range for MAS spectra
+                 mas_phase = 0.01, # Random phase range for MAS spectra
                  peakwise_phase = True, # Whether the phase should be peak-wise or spectrum-wise
-                 encode_imag = True, # Encode the imaginary part of the MAS spectra
+                 encode_imag = False, # Encode the imaginary part of the MAS spectra
                  nw = 24, # Number of MAS rates
                  mas_w_range = [30000, 100000], # MAS rate range
                  random_mas = True,
@@ -102,9 +114,9 @@ loss_pars = dict(srp_w = 1.,
 train_pars = dict(batch_size = 16, # Dataset batch size
                   num_workers = 20, # Number of parallel processes to generate data
                   checkpoint = 1000, # Perform evaluation after that many batches
-                  n_eval = 100, # Number of batches in the evaluation
+                  n_eval = 200, # Number of batches in the evaluation
                   max_checkpoints = 200, # Maximum number of checkpoints before finishing training
-                  out_dir = "../data/Ensemble_PIPNet_2022_02_21_9_models_wr1_imag/", # Output directory
+                  out_dir = "../data/Ensemble_PIPNet_2022_02_23_wr1/", # Output directory
                   change_factor = {50: 0.}, # Checkpoints where
                   avg_models = False,
                   device = "cuda" if torch.cuda.is_available() else "cpu",
@@ -112,7 +124,7 @@ train_pars = dict(batch_size = 16, # Dataset batch size
                  )
 
 model_pars = dict(n_models = 9,
-                  input_dim = 3,
+                  input_dim = 2,
                   hidden_dim = 32,
                   kernel_size = [5, 15, 25, 35, 45],
                   num_layers = 5,

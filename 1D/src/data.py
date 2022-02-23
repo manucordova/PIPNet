@@ -665,22 +665,100 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
             fids[i], _ = self.gen_iso_peak()
 
         # Fourier transform
-        isos = np.real(np.fft.fft(fids, axis=1))
+        isos = np.fft.fft(fids, axis=1)
 
         # Randomize intensity
         da = self.iso_int[1] - self.iso_int[0]
         a = self.iso_int[0] + (np.random.rand(n) * da)
         isos *= a[:, np.newaxis]
 
-        # Make isotropic spectra positive
-        if self.positive:
-            isos[np.real(isos) < 0.] = 0.
-
         iso = np.expand_dims(np.sum(isos, axis=0), 0)
 
         return n, isos, iso
 
-    def gen_mas_params(self, n):
+    def select_index_with_prob(self, prob):
+
+        # Randomly select range
+        p = np.random.random()
+        i = 0
+        p_tot = prob[i]
+        while p > p_tot:
+            i += 1
+            p_tot += prob[i]
+        return i
+
+    def gen_mas0_params(self, n):
+        """
+        Generate MAS-independent parameters (broadening, shift)
+
+        Input:      - n     Number of peaks in the spectrum
+
+        Outputs:    - lws    MAS-independent GLS broadening for each peak
+                    - ms    MAS-independent GLS mixing for each peak
+                    - ss    MAS-independent shift for each peak
+                    - ps    MAS-independent phase for each peak
+        """
+
+        if isinstance(self.mas0_lw_range[0], list):
+            # Randomly select broadening range
+            lws = []
+            for _ in range(n):
+                # Randomly select broadening range
+                i = self.select_index_with_prob(self.mas0_lw_p)
+                # Generate MAS-dependent GLS broadening (uniform distribution)
+                dlw = self.mas0_lw_range[i][1] - self.mas0_lw_range[i][0]
+                lw0 = self.mas0_lw_range[i][0]
+                lws.append(lw0 + (np.random.rand() * dlw))
+            lws = np.array(lws)
+
+        else:
+            dlw = self.mas0_lw_range[1] - self.mas0_lw_range[0]
+            lw0 = self.mas0_lw_range[0]
+            lws = lw0 + (np.random.rand(n) * dlw)
+
+        if isinstance(self.mas0_m_range[0], list):
+            ms = []
+            for _ in range(n):
+                # Randomly select GLS mixing range
+                i = self.select_index_with_prob(self.mas0_m_p)
+                # Generate MAS-dependent GLS mixing (uniform distribution)
+                dm = self.mas0_m_range[i][1] - self.mas0_m_range[i][0]
+                m0 = self.mas0_m_range[i][0]
+                ms.append(m0 + (np.random.rand() * dm))
+            ms = np.array(ms)
+
+        else:
+            # Generate MAS-dependent GLS mixing (uniform distribution)
+            dm = self.mas0_m_range[1] - self.mas0_m_range[0]
+            m0 = self.mas0_m_range[0]
+            ms = m0 + (np.random.rand(n) * dm)
+
+        if isinstance(self.mas0_s_range[0], list):
+            ss = []
+            for _ in range(n):
+                # randomly select shift range
+                i = self.select_index_with_prob(self.mas0_s_p)
+                # Generate MAS-dependent shift
+                ds = self.mas0_s_range[i][1] - self.mas0_s_range[i][0]
+                s0 = self.mas0_s_range[i][0]
+                ss.append(s0 + (np.random.rand() * ds))
+            ss = np.array(ss)
+
+        else:
+            # Generate MAS-dependent shift
+            ds = self.mas0_s_range[1] - self.mas0_s_range[0]
+            s0 = self.mas0_s_range[0]
+            ss = s0 + (np.random.rand(n) * ds)
+
+        if self.debug:
+            print("\n  Generating MAS-independent parameters...")
+            print("                lw [Hz] |     m     |  s [Hz]")
+            for i, (lw, m, s) in enumerate(zip(lws, ms, ss)):
+                print(f"    Peak {i+1: 3.0f}    {lw: 2.2e} | {m: 2.2e} | {s: 2.2e}")
+
+        return lws, ms, ss
+
+    def gen_mas1_params(self, n):
         """
         Generate MAS parameters (rate, broadening, shift)
 
@@ -711,47 +789,49 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
         if isinstance(self.mas_lw_range[0], list):
             # Randomly select broadening range
             lws = []
-            ms = []
-            ss = []
             for _ in range(n):
                 # Randomly select broadening range
-                p = np.random.random()
-                i = 0
-                p_tot = self.mas_p[i]
-                while p > p_tot:
-                    i += 1
-                    p_tot += self.mas_p[i]
-
+                i = self.select_index_with_prob(self.mas_lw_p)
                 # Generate MAS-dependent GLS broadening (uniform distribution)
                 dlw = self.mas_lw_range[i][1] - self.mas_lw_range[i][0]
                 lw0 = self.mas_lw_range[i][0]
                 lws.append(lw0 + (np.random.rand() * dlw))
-
-                # Generate MAS-dependent GLS mixing (uniform distribution)
-                dm = self.mas_m_range[i][1] - self.mas_m_range[i][0]
-                m0 = self.mas_m_range[i][0]
-                ms.append(m0 + (np.random.rand() * dm))
-
-                # Generate MAS-dependent shift
-                ds = self.mas_s_range[i][1] - self.mas_s_range[i][0]
-                s0 = self.mas_s_range[i][0]
-                ss.append(s0 + (np.random.rand() * ds))
-
             lws = np.array(lws)
-            ms = np.array(ms)
-            ss = np.array(ss)
 
         else:
-            # Generate MAS-dependent GLS broadening (uniform distribution)
             dlw = self.mas_lw_range[1] - self.mas_lw_range[0]
             lw0 = self.mas_lw_range[0]
             lws = lw0 + (np.random.rand(n) * dlw)
 
+        if isinstance(self.mas_m_range[0], list):
+            ms = []
+            for _ in range(n):
+                # Randomly select GLS mixing range
+                i = self.select_index_with_prob(self.mas_m_p)
+                # Generate MAS-dependent GLS mixing (uniform distribution)
+                dm = self.mas_m_range[i][1] - self.mas_m_range[i][0]
+                m0 = self.mas_m_range[i][0]
+                ms.append(m0 + (np.random.rand() * dm))
+            ms = np.array(ms)
+
+        else:
             # Generate MAS-dependent GLS mixing (uniform distribution)
             dm = self.mas_m_range[1] - self.mas_m_range[0]
             m0 = self.mas_m_range[0]
             ms = m0 + (np.random.rand(n) * dm)
 
+        if isinstance(self.mas_s_range[0], list):
+            ss = []
+            for _ in range(n):
+                # randomly select shift range
+                i = self.select_index_with_prob(self.mas_s_p)
+                # Generate MAS-dependent shift
+                ds = self.mas_s_range[i][1] - self.mas_s_range[i][0]
+                s0 = self.mas_s_range[i][0]
+                ss.append(s0 + (np.random.rand() * ds))
+            ss = np.array(ss)
+
+        else:
             # Generate MAS-dependent shift
             ds = self.mas_s_range[1] - self.mas_s_range[0]
             s0 = self.mas_s_range[0]
@@ -787,35 +867,15 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
         if isinstance(self.mas2_lw_range[0], list):
             # Randomly select broadening range
             lws2 = []
-            ms2 = []
-            ss2 = []
             for _ in range(n):
                 # Randomly select broadening range
-                p = np.random.random()
-                i = 0
-                p_tot = self.mas2_p[i]
-                while p > p_tot:
-                    i += 1
-                    p_tot += self.mas2_p[i]
+                i = self.select_index_with_prob(self.mas2_lw_p)
 
                 # Generate MAS-dependent Lorentzian broadening (uniform distribution)
                 dlw = self.mas2_lw_range[i][1] - self.mas2_lw_range[i][0]
                 lw0 = self.mas2_lw_range[i][0]
                 lws2.append(lw0 + (np.random.rand() * dlw))
-
-                # Generate MAS-dependent Gaussian broadening (uniform distribution)
-                dm = self.mas2_m_range[i][1] - self.mas2_m_range[i][0]
-                m0 = self.mas2_m_range[i][0]
-                ms2.append(m0 + (np.random.rand() * dm))
-
-                # Generate MAS-dependent shift
-                ds = self.mas2_s_range[i][1] - self.mas2_s_range[i][0]
-                s0 = self.mas2_s_range[i][0]
-                ss2.append(s0 + (np.random.rand() * ds))
-
             lws2 = np.array(lws2)
-            ms2 = np.array(ms2)
-            ss2 = np.array(ss2)
 
         else:
             # Generate MAS-dependent Lorentzian broadening (uniform distribution)
@@ -823,15 +883,49 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
             lw0 = self.mas2_lw_range[0]
             lws2 = lw0 + (np.random.rand(n) * dlw)
 
+
+        if isinstance(self.mas2_m_range[0], list):
+
+            ms2 = []
+            for _ in range(n):
+                # Randomly select mixing range
+                i = self.select_index_with_prob(self.mas2_m_p)
+
+                # Generate MAS-dependent Gaussian broadening (uniform distribution)
+                dm = self.mas2_m_range[i][1] - self.mas2_m_range[i][0]
+                m0 = self.mas2_m_range[i][0]
+                ms2.append(m0 + (np.random.rand() * dm))
+            ms2 = np.array(ms2)
+
+        else:
             # Generate MAS-dependent Gaussian broadening (uniform distribution)
             dm = self.mas2_m_range[1] - self.mas2_m_range[0]
             m0 = self.mas2_m_range[0]
             ms2 = m0 + (np.random.rand(n) * dm)
 
+        if isinstance(self.mas2_s_range[0], list):
+
+            ss2 = []
+            for _ in range(n):
+                # Randomly select shift range
+                i = self.select_index_with_prob(self.mas2_s_p)
+
+                # Generate MAS-dependent shift
+                ds = self.mas2_s_range[i][1] - self.mas2_s_range[i][0]
+                s0 = self.mas2_s_range[i][0]
+                ss2.append(s0 + (np.random.rand() * ds))
+            ss2 = np.array(ss2)
+
+        else:
             # Generate MAS-dependent shift
             ds = self.mas2_s_range[1] - self.mas2_s_range[0]
             s0 = self.mas2_s_range[0]
             ss2 = s0 + (np.random.rand(n) * ds)
+
+        inds = np.random.rand(n) >= self.mas_w2_p
+        lws2[inds] = 0.
+        ms2[inds] = 0.
+        ss2[inds] = 0.
 
         if self.debug:
             print("\n  Generating MAS^2-dependent parameters...")
@@ -841,7 +935,7 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
 
         return lws2, ms2, ss2
 
-    def gls(self, x, p, w, m, h):
+    def gls(self, x, p, w, m):
         """
         Gaussial-Lorentzian sum broadening function
 
@@ -856,14 +950,16 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
 
         if m > 1.:
             m = 1.
+        if m < 0.:
+            m = 0.
 
-        y = h * (1-m) * np.exp(-4 * np.log(2) * np.square(x-p) / (w ** 2))
+        y = (1-m) * np.exp(-4 * np.log(2) * np.square(x-p) / (w ** 2))
 
-        y += h * m / (1 + 4 * np.square(x-p) / (w ** 2))
+        y += m / (1 + 4 * np.square(x-p) / (w ** 2))
 
-        return y
+        return y / np.sum(y)
 
-    def mas_broaden(self, specs, wr, lws, ms, ss, ps):
+    def mas_broaden(self, specs, wr, lws0, lws, ms0, ms, ss0, ss, ps):
         """
         Broaden isotropic spectra with MAS-dependent parameters
 
@@ -888,15 +984,14 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
 
         for i, (w, p) in enumerate(zip(wr, ps)):
 
-            for j, (spec, lw, m, s, pi) in enumerate(zip(specs, lws, ms, ss, p)):
+            for j, (spec, lw0, lw, m0, m, s0, s, pi) in enumerate(zip(specs, lws0, lws, ms0, ms, ss0, ss, p)):
 
-                brd_fid = np.fft.ifft(spec) * np.exp(1j * 2 * np.pi * s / w * self.t)
+                brd_fid = np.fft.ifft(spec) * np.exp(1j * 2 * np.pi * (s0 + s / w) * self.t)
                 if np.abs(pi) > 0.:
                     brd_fid *= np.exp(-1j * pi)
                 data[i, j] = np.fft.fft(brd_fid)
 
-                #data[i, j] = spec
-                data[i, j] = np.convolve(data[i, j], self.gls(self.f, self.f[-1] / 2., lw/w, m/w, 1.), mode="same")
+                data[i, j] = np.convolve(data[i, j], self.gls(self.f, self.f[-1] / 2., lw0 + lw / w, m0 + m / w), mode="same")
 
         if self.encode_imag:
             output = np.empty((n_mas, 2, n_pts))
@@ -909,7 +1004,7 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
 
         return output
 
-    def mas2_broaden(self, specs, wr, lws, lws2, ms, ms2, ss, ss2, ps):
+    def mas2_broaden(self, specs, wr, lws0, lws, lws2, ms0, ms, ms2, ss0, ss, ss2, ps):
         """
         Broaden isotropic spectra with MAS^2-dependent parameters
 
@@ -934,18 +1029,18 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
 
         for i, (w, p) in enumerate(zip(wr, ps)):
 
-            for j, (spec, lw, lw2, m, m2, s, s2, pi) in enumerate(zip(specs, lws, lws2, ms, ms2, ss, ss2, p)):
+            for j, (spec, lw0, lw, lw2, m0, m, m2, s0, s, s2, pi) in enumerate(zip(specs, lws0, lws, lws2, ms0, ms, ms2, ss0, ss, ss2, p)):
 
-                brd_fid = np.fft.ifft(spec) * np.exp(1j * 2 * np.pi * s / w * self.t)
-                brd_fid *= np.exp(1j * 2 * np.pi * s2 / (w ** 2) * self.t)
+                brd_fid = np.fft.ifft(spec) * np.exp(1j * 2 * np.pi * (s0 + s / w + s2 / (w ** 2)) * self.t)
 
                 if np.abs(pi) > 0.:
                     brd_fid *= np.exp(-1j * pi)
                 data[i, j] = np.fft.fft(brd_fid)
 
                 #data[i, j] = spec
-                data[i, j] = np.convolve(data[i, j], self.gls(self.f, self.f[-1] / 2., lw/w, m/w, 1.), mode="same")
-                data[i, j] = np.convolve(data[i, j], self.gls(self.f, self.f[-1] / 2., lw2/(w ** 2), m2/(w ** 2), 1.), mode="same")
+                data[i, j] = np.convolve(data[i, j], self.gls(self.f, self.f[-1] / 2.,
+                                                              lw0 + lw / w + lw2 / (w ** 2),
+                                                              m0 + m / w + m2 / (w ** 2)), mode="same")
 
         if self.encode_imag:
             output = np.empty((n_mas, 2, n_pts))
@@ -961,7 +1056,7 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
     def normalize_spectra(self, iso, specs, brd_specs):
 
         # Get real spectra integrals
-        int0 = np.sum(iso)
+        int0 = np.sum(np.real(iso))
         ints = np.sum(brd_specs[:,0], axis=1)
 
         # Normalize isotropic spectrum
@@ -975,9 +1070,13 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
         brd_specs *= fac / self.brd_norm
         brd_specs += self.offset
 
-        return iso, specs, brd_specs
+        return np.real(iso), np.real(specs), brd_specs
 
     def finalize_spectra(self, iso, specs, brd_specs, wr):
+
+        iso = np.real(iso)
+        if self.positive:
+            iso[iso < 0.] = 0.
 
         # Add noise
         if self.noise > 0.:
@@ -1027,16 +1126,18 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
         # Generate isotropic spectrum
         n, specs, iso = self.gen_iso_spectra()
 
+        lws0, ms0, ss0 = self.gen_mas0_params(n)
+
         # Generate MAS-dependent parameters
-        wr, lws, ms, ss, ps = self.gen_mas_params(n)
+        wr, lws, ms, ss, ps = self.gen_mas1_params(n)
 
         if self.mas_w2 and np.random.random() < self.mas_w2_p:
             lws2, ms2, ss2 = self.gen_mas2_params(n)
             # Broaden isotropic spectrum with MAS-dependent parameters
-            brd_specs = self.mas2_broaden(specs, wr, lws, lws2, ms, ms2, ss, ss2, ps)
+            brd_specs = self.mas2_broaden(specs, wr, lws0, lws, lws2, ms0, ms, ms2, ss0, ss, ss2, ps)
         else:
             # Broaden isotropic spectrum with MAS-dependent parameters
-            brd_specs = self.mas_broaden(specs, wr, lws, ms, ss, ps)
+            brd_specs = self.mas_broaden(specs, wr, lws0, lws, ms0, ms, ss0, ss, ps)
 
         # Set the minimum of each spectrum to zero
         brd_specs -= np.min(brd_specs[:, 0], axis=1)[:, np.newaxis, np.newaxis]
