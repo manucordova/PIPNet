@@ -1096,7 +1096,7 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
             if self.wr_inv:
                 wr_enc = self.wr_factor / wr_enc
             # Normalize MAS rate
-            elif self.norm_wr:
+            if self.norm_wr:
                 wr_enc -= self.mas_w_range[0]
                 wr_enc /= self.mas_w_range[1] - self.mas_w_range[0]
 
