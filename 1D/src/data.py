@@ -959,7 +959,7 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
 
         return y / np.sum(y)
 
-    def mas_broaden(self, specs, wr, lws0, lws, ms0, ms, ss0, ss, ps):
+    def mas_broaden(self, specs, wr, lws0, lws, ms0, ms, ss0, ss, ps, ms_other):
         """
         Broaden isotropic spectra with MAS-dependent parameters
 
@@ -982,16 +982,19 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
         if not self.peakwise_phase:
             raise NotImplementedError()
 
-        for i, (w, p) in enumerate(zip(wr, ps)):
+        for i, (w, p, m_other) in enumerate(zip(wr, ps, ms_other)):
 
-            for j, (spec, lw0, lw, m0, m, s0, s, pi) in enumerate(zip(specs, lws0, lws, ms0, ms, ss0, ss, p)):
+            for j, (spec, lw0, lw, m0, m, s0, s, pi, mi) in enumerate(zip(specs, lws0, lws, ms0, ms, ss0, ss, p, m_other)):
 
                 brd_fid = np.fft.ifft(spec) * np.exp(1j * 2 * np.pi * (s0 + s / w) * self.t)
                 if np.abs(pi) > 0.:
                     brd_fid *= np.exp(-1j * pi)
                 data[i, j] = np.fft.fft(brd_fid)
 
-                data[i, j] = np.convolve(data[i, j], self.gls(self.f, self.f[-1] / 2., lw0 + lw / w, m0 + m / w), mode="same")
+                if mi >= 0:
+                    data[i, j] = np.convolve(data[i, j], self.gls(self.f, self.f[-1] / 2., lw0 + lw / w, mi), mode="same")
+                else:
+                    data[i, j] = np.convolve(data[i, j], self.gls(self.f, self.f[-1] / 2., lw0 + lw / w, m0 + m / w), mode="same")
 
         if self.encode_imag:
             output = np.empty((n_mas, 2, n_pts))
@@ -1004,7 +1007,7 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
 
         return output
 
-    def mas2_broaden(self, specs, wr, lws0, lws, lws2, ms0, ms, ms2, ss0, ss, ss2, ps):
+    def mas2_broaden(self, specs, wr, lws0, lws, lws2, ms0, ms, ms2, ss0, ss, ss2, ps, ms_other):
         """
         Broaden isotropic spectra with MAS^2-dependent parameters
 
@@ -1027,9 +1030,9 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
 
         data = np.empty((n_mas, n_pks, n_pts), dtype=complex)
 
-        for i, (w, p) in enumerate(zip(wr, ps)):
+        for i, (w, p, m_other) in enumerate(zip(wr, ps, ms_other)):
 
-            for j, (spec, lw0, lw, lw2, m0, m, m2, s0, s, s2, pi) in enumerate(zip(specs, lws0, lws, lws2, ms0, ms, ms2, ss0, ss, ss2, p)):
+            for j, (spec, lw0, lw, lw2, m0, m, m2, s0, s, s2, pi, mi) in enumerate(zip(specs, lws0, lws, lws2, ms0, ms, ms2, ss0, ss, ss2, p, m_other)):
 
                 brd_fid = np.fft.ifft(spec) * np.exp(1j * 2 * np.pi * (s0 + s / w + s2 / (w ** 2)) * self.t)
 
@@ -1037,10 +1040,12 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
                     brd_fid *= np.exp(-1j * pi)
                 data[i, j] = np.fft.fft(brd_fid)
 
-                #data[i, j] = spec
-                data[i, j] = np.convolve(data[i, j], self.gls(self.f, self.f[-1] / 2.,
-                                                              lw0 + lw / w + lw2 / (w ** 2),
-                                                              m0 + m / w + m2 / (w ** 2)), mode="same")
+                if mi >= 0:
+                    data[i, j] = np.convolve(data[i, j], self.gls(self.f, self.f[-1] / 2., lw0 + lw / w + lw2 / (w ** 2), mi), mode="same")
+                else:
+                    data[i, j] = np.convolve(data[i, j], self.gls(self.f, self.f[-1] / 2.,
+                                                                  lw0 + lw / w + lw2 / (w ** 2),
+                                                                  m0 + m / w + m2 / (w ** 2)), mode="same")
 
         if self.encode_imag:
             output = np.empty((n_mas, 2, n_pts))
@@ -1118,6 +1123,44 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
 
         return int(1e12)
 
+    def gen_mas_mixing(self, n, wr):
+        ms = -1 * np.ones((len(wr), n))
+
+        dm = self.mas_other_mixing_range[1] - self.mas_other_mixing_range[0]
+        m0 = self.mas_other_mixing_range[0]
+
+        for i in range(n):
+            p = np.random.random()
+            if p < self.mas_other_mixing_p:
+                j = self.select_index_with_prob(self.mas_other_mixing_probs)
+
+                if self.mas_other_mixing_trends[j] == "constant":
+                    ms[:, i] = m0 + np.random.rand() * dm
+
+
+                elif self.mas_other_mixing_trends[j] == "increase":
+                    m1 = m0 + np.random.rand() * dm
+                    m2 = m0 + np.random.rand() * dm
+                    m_min = min(m1, m2)
+                    m_max = max(m1, m2)
+                    gen_dm = m_max - m_min
+                    gen_ms = m_min + np.random.rand(len(wr)) * gen_dm
+                    ms[:, i] = np.sort(gen_ms)
+
+                elif self.mas_other_mixing_trends[j] == "decrease":
+                    m1 = m0 + np.random.rand() * dm
+                    m2 = m0 + np.random.rand() * dm
+                    m_min = min(m1, m2)
+                    m_max = max(m1, m2)
+                    gen_dm = m_max - m_min
+                    gen_ms = m_min + np.random.rand(len(wr)) * gen_dm
+                    ms[:, i] = np.sort(gen_ms)[::-1]
+
+                else:
+                    raise ValueError(f"Unknown trend: {self.mas_other_mixing_trends[j]}")
+
+        return ms
+
     def __getitem__(self, _):
         """
         Generate an input
@@ -1131,13 +1174,16 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
         # Generate MAS-dependent parameters
         wr, lws, ms, ss, ps = self.gen_mas1_params(n)
 
+        # Generate MAS-dpendent mixing
+        ms_other = self.gen_mas_mixing(n, wr)
+
         if self.mas_w2 and np.random.random() < self.mas_w2_p:
             lws2, ms2, ss2 = self.gen_mas2_params(n)
             # Broaden isotropic spectrum with MAS-dependent parameters
-            brd_specs = self.mas2_broaden(specs, wr, lws0, lws, lws2, ms0, ms, ms2, ss0, ss, ss2, ps)
+            brd_specs = self.mas2_broaden(specs, wr, lws0, lws, lws2, ms0, ms, ms2, ss0, ss, ss2, ps, ms_other)
         else:
             # Broaden isotropic spectrum with MAS-dependent parameters
-            brd_specs = self.mas_broaden(specs, wr, lws0, lws, ms0, ms, ss0, ss, ps)
+            brd_specs = self.mas_broaden(specs, wr, lws0, lws, ms0, ms, ss0, ss, ps, ms_other)
 
         # Set the minimum of each spectrum to zero
         brd_specs -= np.min(brd_specs[:, 0], axis=1)[:, np.newaxis, np.newaxis]
