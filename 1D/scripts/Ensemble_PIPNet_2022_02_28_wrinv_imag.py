@@ -96,7 +96,7 @@ data_pars = dict(
                  brd_norm = 64., # Normalization factor for MAS spectra
                  offset = 0., # Baseline offset
                  norm_wr = False, # Normalize MAS rate values
-                 wr_inv = True # Encode inverse of MAS rate instead of MAS rate
+                 wr_inv = True, # Encode inverse of MAS rate instead of MAS rate
                  wr_factor = 30000.,
                 )
 
