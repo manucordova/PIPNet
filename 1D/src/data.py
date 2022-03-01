@@ -546,6 +546,8 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
 
         self.mas_w2 = False
 
+        self.mas_lw_noise = 0.
+
         # Set parameters
         self.__dict__.update(kwargs)
 
@@ -991,10 +993,12 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
                     brd_fid *= np.exp(-1j * pi)
                 data[i, j] = np.fft.fft(brd_fid)
 
+                lw_noise = np.random.randn() * self.mas_lw_noise * (lw / wr[0] - lw / wr[-1])
+
                 if mi >= 0:
-                    data[i, j] = np.convolve(data[i, j], self.gls(self.f, self.f[-1] / 2., lw0 + lw / w, mi), mode="same")
+                    data[i, j] = np.convolve(data[i, j], self.gls(self.f, self.f[-1] / 2., lw_noise + lw0 + lw / w, mi), mode="same")
                 else:
-                    data[i, j] = np.convolve(data[i, j], self.gls(self.f, self.f[-1] / 2., lw0 + lw / w, m0 + m / w), mode="same")
+                    data[i, j] = np.convolve(data[i, j], self.gls(self.f, self.f[-1] / 2., lw_noise + lw0 + lw / w, m0 + m / w), mode="same")
 
         if self.encode_imag:
             output = np.empty((n_mas, 2, n_pts))
@@ -1040,11 +1044,13 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
                     brd_fid *= np.exp(-1j * pi)
                 data[i, j] = np.fft.fft(brd_fid)
 
+                lw_noise = np.random.randn() * self.mas_lw_noise * (lw / wr[0] - lw / wr[-1] + lw2 / (wr[0]**2) - lw2 / (wr[-1]**2))
+
                 if mi >= 0:
-                    data[i, j] = np.convolve(data[i, j], self.gls(self.f, self.f[-1] / 2., lw0 + lw / w + lw2 / (w ** 2), mi), mode="same")
+                    data[i, j] = np.convolve(data[i, j], self.gls(self.f, self.f[-1] / 2., lw_noise + lw0 + lw / w + lw2 / (w ** 2), mi), mode="same")
                 else:
                     data[i, j] = np.convolve(data[i, j], self.gls(self.f, self.f[-1] / 2.,
-                                                                  lw0 + lw / w + lw2 / (w ** 2),
+                                                                  lw_noise + lw0 + lw / w + lw2 / (w ** 2),
                                                                   m0 + m / w + m2 / (w ** 2)), mode="same")
 
         if self.encode_imag:
