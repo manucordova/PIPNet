@@ -988,7 +988,12 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
 
             for j, (spec, lw0, lw, m0, m, s0, s, pi, mi) in enumerate(zip(specs, lws0, lws, ms0, ms, ss0, ss, p, m_other)):
 
-                brd_fid = np.fft.ifft(spec) * np.exp(1j * 2 * np.pi * (s0 + s / w) * self.t)
+                if self.mas_s_noise > 0:
+                    ds = np.random.randn() * self.mas_s_noise
+                    brd_fid = np.fft.ifft(spec) * np.exp(1j * 2 * np.pi * (s0 + s / w + ds) * self.t)
+                else:
+                    brd_fid = np.fft.ifft(spec) * np.exp(1j * 2 * np.pi * (s0 + s / w) * self.t)
+
                 if np.abs(pi) > 0.:
                     brd_fid *= np.exp(-1j * pi)
                 data[i, j] = np.fft.fft(brd_fid)
@@ -1038,7 +1043,11 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
 
             for j, (spec, lw0, lw, lw2, m0, m, m2, s0, s, s2, pi, mi) in enumerate(zip(specs, lws0, lws, lws2, ms0, ms, ms2, ss0, ss, ss2, p, m_other)):
 
-                brd_fid = np.fft.ifft(spec) * np.exp(1j * 2 * np.pi * (s0 + s / w + s2 / (w ** 2)) * self.t)
+                if self.mas_s_noise > 0:
+                    ds = np.random.randn() * self.mas_s_noise
+                    brd_fid = np.fft.ifft(spec) * np.exp(1j * 2 * np.pi * (s0 + s / w + s2 / (w ** 2) + ds) * self.t)
+                else:
+                    brd_fid = np.fft.ifft(spec) * np.exp(1j * 2 * np.pi * (s0 + s / w + s2 / (w ** 2)) * self.t)
 
                 if np.abs(pi) > 0.:
                     brd_fid *= np.exp(-1j * pi)
