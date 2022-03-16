@@ -134,7 +134,7 @@ train_pars = dict(batch_size = 16, # Dataset batch size
                   monitor_end = "\n"
                  )
 
-model_pars = dict(n_models = 9,
+model_pars = dict(n_models = 5,
                   input_dim = 2,
                   hidden_dim = 32,
                   kernel_size = [5, 15, 25, 35, 45],
