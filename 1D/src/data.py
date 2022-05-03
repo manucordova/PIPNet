@@ -1207,3 +1207,29 @@ class PIPDatasetGLS(torch.utils.data.Dataset):
         iso, specs, brd_specs = self.normalize_spectra(iso, specs, brd_specs)
 
         return self.finalize_spectra(iso, specs, brd_specs, wr)
+
+    def iso_to_mas(self, n, specs, iso):
+
+        lws0, ms0, ss0 = self.gen_mas0_params(n)
+
+        # Generate MAS-dependent parameters
+        wr, lws, ms, ss, ps = self.gen_mas1_params(n)
+
+        # Generate MAS-dpendent mixing
+        ms_other = self.gen_mas_mixing(n, wr)
+
+        if self.mas_w2 and np.random.random() < self.mas_w2_p:
+            lws2, ms2, ss2 = self.gen_mas2_params(n)
+            # Broaden isotropic spectrum with MAS-dependent parameters
+            brd_specs = self.mas2_broaden(specs, wr, lws0, lws, lws2, ms0, ms, ms2, ss0, ss, ss2, ps, ms_other)
+        else:
+            # Broaden isotropic spectrum with MAS-dependent parameters
+            brd_specs = self.mas_broaden(specs, wr, lws0, lws, ms0, ms, ss0, ss, ps, ms_other)
+
+        # Set the minimum of each spectrum to zero
+        brd_specs -= np.min(brd_specs[:, 0], axis=1)[:, np.newaxis, np.newaxis]
+
+        # Normalize spectra
+        iso, specs, brd_specs = self.normalize_spectra(iso, specs, brd_specs)
+
+        return self.finalize_spectra(iso, specs, brd_specs, wr)
