@@ -125,7 +125,7 @@ train_pars = dict(batch_size=16,  # Dataset batch size
                   checkpoint=1000,  # Perform evaluation after that many batches
                   n_eval=200,  # Number of batches in the evaluation
                   max_checkpoints=200,  # Maximum number of checkpoints before finishing training
-                  out_dir="../data/Ensemble_PIPNet_2022_05_03_prod_3/",  # Output directory
+                  out_dir="../data/Ensemble_PIPNet_2022_05_03_prod_4/",  # Output directory
                   change_factor={50: 0.},  # Checkpoints where
                   avg_models=False,
                   device="cuda" if torch.cuda.is_available() else "cpu",
@@ -144,7 +144,7 @@ model_pars = dict(n_models=4,
                   independent=True,
                   return_all_layers=True,
                   final_act="linear",
-                  noise=2.e-4,
+                  noise=1.e-4,
                   )
 
 if not os.path.exists(train_pars["out_dir"]):
