@@ -64,7 +64,11 @@ class ConvLSTMCell(nn.Module):
             )
 
         if self.batch_norm:
-            self.bn = nn.BatchNorm1d(4 * self.hidden_dim)
+            if self.independent:
+                self.bn = nn.BatchNorm1d(3 * self.hidden_dim)
+            else:
+                self.bn = nn.BatchNorm1d(4 * self.hidden_dim)
+                
             self.bn_out = nn.BatchNorm1d(self.hidden_dim)
         else:
             self.bn = nn.Identity()
@@ -119,7 +123,7 @@ class ConvLSTMCell(nn.Module):
         g = torch.tanh(cc_g)
 
         c_next = f * c_cur + i * g
-        h_next = o * torch.tanh(c_next)
+        h_next = o * torch.tanh(self.bn_out(c_next))
 
         return h_next, c_next
 
