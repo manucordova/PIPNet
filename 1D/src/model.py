@@ -10,9 +10,17 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-class ConvLSTMCell(nn.Module):
 
-    def __init__(self, input_dim, hidden_dim, kernel_size, bias, independent=False):
+class ConvLSTMCell(nn.Module):
+    def __init__(
+        self,
+        input_dim,
+        hidden_dim,
+        kernel_size,
+        bias,
+        batch_norm=False,
+        independent=False,
+    ):
         """
         Initialize ConvLSTM cell.
         Parameters
@@ -36,30 +44,45 @@ class ConvLSTMCell(nn.Module):
         self.padding = kernel_size // 2
         self.bias = bias
         self.independent = independent
+        self.batch_norm = batch_norm
 
         if self.independent:
-            self.conv = nn.Conv1d(in_channels=self.input_dim + self.hidden_dim,
-                                  out_channels=3 * self.hidden_dim,
-                                  kernel_size=self.kernel_size,
-                                  padding=self.padding,
-                                  bias=self.bias)
+            self.conv = nn.Conv1d(
+                in_channels=self.input_dim + self.hidden_dim,
+                out_channels=3 * self.hidden_dim,
+                kernel_size=self.kernel_size,
+                padding=self.padding,
+                bias=self.bias,
+            )
         else:
-            self.conv = nn.Conv1d(in_channels=self.input_dim + self.hidden_dim,
-                                  out_channels=4 * self.hidden_dim,
-                                  kernel_size=self.kernel_size,
-                                  padding=self.padding,
-                                  bias=self.bias)
+            self.conv = nn.Conv1d(
+                in_channels=self.input_dim + self.hidden_dim,
+                out_channels=4 * self.hidden_dim,
+                kernel_size=self.kernel_size,
+                padding=self.padding,
+                bias=self.bias,
+            )
+
+        if self.batch_norm:
+            self.bn = nn.BatchNorm1d(4 * self.hidden_dim)
+            self.bn_out = nn.BatchNorm1d(self.hidden_dim)
+        else:
+            self.bn = nn.Identity()
+            self.bn_out = nn.Identity()
 
     def analyze(self, input_tensor, cur_state):
 
         h_cur, c_cur = cur_state
 
-        combined = torch.cat([input_tensor, h_cur], dim=1)  # concatenate along channel axis
+        # concatenate along channel axis
+        combined = torch.cat([input_tensor, h_cur], dim=1)
         combined_conv = self.conv(combined)
+
+        combined_conv = self.bn(combined_conv)
 
         if self.independent:
             cc_i, cc_f, cc_g = torch.split(combined_conv, self.hidden_dim, dim=1)
-            o = 1.
+            o = 1.0
 
         else:
             cc_i, cc_f, cc_o, cc_g = torch.split(combined_conv, self.hidden_dim, dim=1)
@@ -70,19 +93,22 @@ class ConvLSTMCell(nn.Module):
         g = torch.tanh(cc_g)
 
         c_next = f * c_cur + i * g
-        h_next = o * torch.tanh(c_next)
+        h_next = o * torch.tanh(self.bn_out(c_next))
 
         return i, f, o, g, h_next, c_next
 
     def forward(self, input_tensor, cur_state):
         h_cur, c_cur = cur_state
 
-        combined = torch.cat([input_tensor, h_cur], dim=1)  # concatenate along channel axis
+        # concatenate along channel axis
+        combined = torch.cat([input_tensor, h_cur], dim=1)
         combined_conv = self.conv(combined)
+
+        combined_conv = self.bn(combined_conv)
 
         if self.independent:
             cc_i, cc_f, cc_g = torch.split(combined_conv, self.hidden_dim, dim=1)
-            o = 1.
+            o = 1.0
 
         else:
             cc_i, cc_f, cc_o, cc_g = torch.split(combined_conv, self.hidden_dim, dim=1)
@@ -98,9 +124,14 @@ class ConvLSTMCell(nn.Module):
         return h_next, c_next
 
     def init_hidden(self, batch_size, size):
-        return (torch.zeros(batch_size, self.hidden_dim, size, device=self.conv.weight.device),
-                torch.zeros(batch_size, self.hidden_dim, size, device=self.conv.weight.device))
-
+        return (
+            torch.zeros(
+                batch_size, self.hidden_dim, size, device=self.conv.weight.device
+            ),
+            torch.zeros(
+                batch_size, self.hidden_dim, size, device=self.conv.weight.device
+            ),
+        )
 
 
 class ConvLSTM(nn.Module):
@@ -128,17 +159,29 @@ class ConvLSTM(nn.Module):
         >> h = last_states[0][0]  # 0 for layer index, 0 for h index
     """
 
-    def __init__(self, input_dim, hidden_dim, kernel_size, num_layers,
-                 batch_input=1, bias=True, final_bias=True,
-                 independent=False, return_all_layers=False,
-                 final_kernel_size=1, final_act="sigmoid", noise=0.):
+    def __init__(
+        self,
+        input_dim,
+        hidden_dim,
+        kernel_size,
+        num_layers,
+        batch_input=1,
+        bias=True,
+        final_bias=True,
+        batch_norm=False,
+        independent=False,
+        return_all_layers=False,
+        final_kernel_size=1,
+        final_act="sigmoid",
+        noise=0.0,
+    ):
         super(ConvLSTM, self).__init__()
 
         # Make sure that both `kernel_size` and `hidden_dim` are lists having len == num_layers
         kernel_size = self._extend_for_multilayer(kernel_size, num_layers)
         hidden_dim = self._extend_for_multilayer(hidden_dim, num_layers)
         if not len(kernel_size) == len(hidden_dim) == num_layers:
-            raise ValueError('Inconsistent list length.')
+            raise ValueError("Inconsistent list length.")
 
         self.is_ensemble = False
         self.noise = noise
@@ -156,21 +199,30 @@ class ConvLSTM(nn.Module):
 
         cell_list = []
         for i in range(0, self.num_layers):
-            cur_input_dim = self.input_dim * self.batch_input if i == 0 else self.hidden_dim[i - 1]
+            cur_input_dim = (
+                self.input_dim * self.batch_input if i == 0 else self.hidden_dim[i - 1]
+            )
 
-            cell_list.append(ConvLSTMCell(input_dim=cur_input_dim,
-                                          hidden_dim=self.hidden_dim[i],
-                                          kernel_size=self.kernel_size[i],
-                                          bias=self.bias,
-                                          independent=independent))
+            cell_list.append(
+                ConvLSTMCell(
+                    input_dim=cur_input_dim,
+                    hidden_dim=self.hidden_dim[i],
+                    kernel_size=self.kernel_size[i],
+                    bias=self.bias,
+                    batch_norm=batch_norm,
+                    independent=independent,
+                )
+            )
 
         self.cell_list = nn.ModuleList(cell_list)
 
-        self.final_conv = nn.Conv1d(in_channels=self.hidden_dim[-1],
-                                    out_channels=1,
-                                    kernel_size=self.final_kernel_size,
-                                    padding=self.final_padding,
-                                    bias=self.final_bias)
+        self.final_conv = nn.Conv1d(
+            in_channels=self.hidden_dim[-1],
+            out_channels=1,
+            kernel_size=self.final_kernel_size,
+            padding=self.final_padding,
+            bias=self.final_bias,
+        )
 
         if final_act == "sigmoid":
             self.final_act = nn.Sigmoid()
@@ -188,7 +240,7 @@ class ConvLSTM(nn.Module):
             if i >= self.batch_input - 1:
                 tmp_input = []
                 for j in reversed(range(self.batch_input)):
-                    tmp_input.append(torch.unsqueeze(input_tensor[:, i-j], 1))
+                    tmp_input.append(torch.unsqueeze(input_tensor[:, i - j], 1))
                 cur_layer_input.append(torch.cat(tmp_input, dim=2))
         return torch.cat(cur_layer_input, dim=1)
 
@@ -212,8 +264,7 @@ class ConvLSTM(nn.Module):
             raise NotImplementedError()
         else:
             # Since the init is done in forward. Can send image size here
-            hidden_state = self._init_hidden(batch_size=b,
-                                             image_size=s)
+            hidden_state = self._init_hidden(batch_size=b, image_size=s)
 
         layer_output_list = []
         last_state_list = []
@@ -222,7 +273,7 @@ class ConvLSTM(nn.Module):
         # Batch input layers
         cur_layer_input = self._batch_input(input_tensor)
 
-        if self.noise > 0.:
+        if self.noise > 0.0:
             cur_layer_input += torch.randn_like(cur_layer_input) * self.noise
         seq_len = cur_layer_input.size(1)
 
@@ -232,8 +283,9 @@ class ConvLSTM(nn.Module):
             output_inner = []
 
             for t in range(seq_len):
-                h, c = self.cell_list[layer_idx](input_tensor=cur_layer_input[:, t, :, :],
-                                                 cur_state=[h, c])
+                h, c = self.cell_list[layer_idx](
+                    input_tensor=cur_layer_input[:, t, :, :], cur_state=[h, c]
+                )
                 output_inner.append(h)
 
                 if self.return_all_layers and layer_idx == self.num_layers - 1:
@@ -268,7 +320,6 @@ class ConvLSTM(nn.Module):
         return param
 
 
-
 class ConvLSTMEnsemble(nn.Module):
 
     """
@@ -294,15 +345,28 @@ class ConvLSTMEnsemble(nn.Module):
         >> h = last_states[0][0]  # 0 for layer index, 0 for h index
     """
 
-    def __init__(self, n_models, input_dim, hidden_dim, kernel_size, num_layers,
-                 batch_input=1, bias=True, final_bias=True,
-                 return_all_layers=False, independent=False,
-                 final_kernel_size=1, final_act="sigmoid", noise=0.):
+    def __init__(
+        self,
+        n_models,
+        input_dim,
+        hidden_dim,
+        kernel_size,
+        num_layers,
+        batch_input=1,
+        bias=True,
+        final_bias=True,
+        return_all_layers=False,
+        batch_norm=False,
+        independent=False,
+        final_kernel_size=1,
+        final_act="sigmoid",
+        noise=0.0,
+    ):
         super(ConvLSTMEnsemble, self).__init__()
 
         self.is_ensemble = True
         self.noise = noise
-        self.return_all_layers=return_all_layers
+        self.return_all_layers = return_all_layers
 
         self.multiscale_ks = isinstance(kernel_size[0], list)
         self.multiscale_fks = isinstance(final_kernel_size, list)
@@ -320,13 +384,22 @@ class ConvLSTMEnsemble(nn.Module):
             else:
                 fks = final_kernel_size
 
-            models.append(ConvLSTM(input_dim, hidden_dim, ks, num_layers,
-                                   batch_input=batch_input,
-                                   bias=bias,
-                                   final_bias=final_bias,
-                                   independent=independent,
-                                   return_all_layers=return_all_layers,
-                                   final_kernel_size=fks, final_act="sigmoid"))
+            models.append(
+                ConvLSTM(
+                    input_dim,
+                    hidden_dim,
+                    ks,
+                    num_layers,
+                    batch_input=batch_input,
+                    bias=bias,
+                    final_bias=final_bias,
+                    batch_norm=batch_norm,
+                    independent=independent,
+                    return_all_layers=return_all_layers,
+                    final_kernel_size=fks,
+                    final_act="sigmoid",
+                )
+            )
 
         self.models = nn.ModuleList(models)
 
@@ -347,7 +420,7 @@ class ConvLSTMEnsemble(nn.Module):
 
         ys = []
         for net in self.models:
-            if self.noise > 0.:
+            if self.noise > 0.0:
                 X = input_tensor.clone() + torch.randn_like(input_tensor) * self.noise
                 y, _, _ = net(X)
             else:
@@ -359,11 +432,24 @@ class ConvLSTMEnsemble(nn.Module):
         return torch.mean(ys, dim=0), torch.std(ys, dim=0), ys
 
 
-
 class CustomLoss(nn.Module):
-    def __init__(self, srp_w=1., srp_exp=2., srp_offset=1., srp_fac=0.,
-                 brd_w=0., brd_sig=5, brd_len=25, brd_exp=2., brd_offset=1., brd_fac=0.,
-                 int_w=0., int_exp=2., return_components=False, device="cpu"):
+    def __init__(
+        self,
+        srp_w=1.0,
+        srp_exp=2.0,
+        srp_offset=1.0,
+        srp_fac=0.0,
+        brd_w=0.0,
+        brd_sig=5,
+        brd_len=25,
+        brd_exp=2.0,
+        brd_offset=1.0,
+        brd_fac=0.0,
+        int_w=0.0,
+        int_exp=2.0,
+        return_components=False,
+        device="cpu",
+    ):
         super(CustomLoss, self).__init__()
 
         self.srp_w = srp_w
@@ -381,17 +467,30 @@ class CustomLoss(nn.Module):
 
         self.return_components = return_components
 
-        if srp_w == 0. and brd_w == 0.:
+        if srp_w == 0.0 and brd_w == 0.0:
             raise ValueError("At least one of the loss weights should be non-zero!")
 
-        if self.brd_w > 0.:
+        if self.brd_w > 0.0:
 
             brd_pad = brd_len // 2
-            k = 1. / (2 * np.pi * (brd_sig ** 2)) * torch.exp(-torch.square(torch.arange(brd_len) - brd_pad) / (2*(brd_sig ** 2)))
+            k = (
+                1.0
+                / (2 * np.pi * (brd_sig ** 2))
+                * torch.exp(
+                    -torch.square(torch.arange(brd_len) - brd_pad)
+                    / (2 * (brd_sig ** 2))
+                )
+            )
             k /= torch.sum(k)
             k = k.view(1, 1, brd_len)
 
-            self.brd_filt = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=brd_len, padding=brd_pad, bias=False)
+            self.brd_filt = nn.Conv1d(
+                in_channels=1,
+                out_channels=1,
+                kernel_size=brd_len,
+                padding=brd_pad,
+                bias=False,
+            )
             self.brd_filt.weight.data = k
             self.brd_filt.weight.requires_grad = False
             self.brd_filt.to(device)
@@ -428,7 +527,7 @@ class CustomLoss(nn.Module):
         # Compute the scaling
         w = torch.ones_like(x) * self.srp_offset
 
-        if self.srp_fac > 0.:
+        if self.srp_fac > 0.0:
             w = torch.max(w, y_trg * self.srp_fac)
 
         x = x * w
@@ -459,7 +558,7 @@ class CustomLoss(nn.Module):
         # Compute the scaling
         w = torch.ones_like(x) * self.brd_offset
 
-        if self.brd_fac > 0.:
+        if self.brd_fac > 0.0:
             w = torch.max(w, y2_trg * self.brd_fac)
 
         x = x * w
@@ -480,19 +579,19 @@ class CustomLoss(nn.Module):
     def __call__(self, y, y_trg):
 
         components = []
-        tot_loss = 0.
+        tot_loss = 0.0
 
-        if self.srp_w > 0.:
+        if self.srp_w > 0.0:
             tmp_loss = self.srp_loss(y, y_trg)
             tot_loss += tmp_loss
             components.append(float(tmp_loss.detach().cpu()))
 
-        if self.brd_w > 0.:
+        if self.brd_w > 0.0:
             tmp_loss = self.brd_loss(y, y_trg)
             tot_loss += tmp_loss
             components.append(float(tmp_loss.detach().cpu()))
 
-        if self.int_w > 0.:
+        if self.int_w > 0.0:
             tmp_loss = self.int_loss(y, y_trg)
             tot_loss += tmp_loss
             components.append(float(tmp_loss.detach().cpu()))
