@@ -137,7 +137,7 @@ if __name__ == "__main__":
 
     dataset = data.PIPDatasetGLS2D(data_pars, data_pars, rot_range=[-45.])
 
-    net = model.ConvLSTMEnsemble(**model_pars)
+    net = model.ConvLSTMEnsemble(**model_pars).to(train_pars["device"])
 
     opt = torch.optim.Adam(
         net.parameters(),
