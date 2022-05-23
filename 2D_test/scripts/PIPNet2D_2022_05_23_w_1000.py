@@ -15,12 +15,6 @@ import data
 import model
 import train
 
-#import nmrglue as ng
-import scipy as sp
-import scipy.interpolate as ip
-import scipy.optimize as op
-import scipy.signal as sg
-
 if __name__ == "__main__":
 
     data_pars = dict(
