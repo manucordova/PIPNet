@@ -120,7 +120,7 @@ if __name__ == "__main__":
     )
 
     model_pars = dict(
-        n_models=4,
+        n_models=1,
         input_dim=2,
         hidden_dim=32,
         kernel_size=[5, 7, 9, 11, 13, 15],
