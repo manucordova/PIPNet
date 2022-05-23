@@ -47,7 +47,7 @@ class ConvLSTMCell(nn.Module):
         self.batch_norm = batch_norm
 
         if self.independent:
-            self.conv = nn.Conv1d(
+            self.conv = nn.Conv2d(
                 in_channels=self.input_dim + self.hidden_dim,
                 out_channels=3 * self.hidden_dim,
                 kernel_size=self.kernel_size,
@@ -55,7 +55,7 @@ class ConvLSTMCell(nn.Module):
                 bias=self.bias,
             )
         else:
-            self.conv = nn.Conv1d(
+            self.conv = nn.Conv2d(
                 in_channels=self.input_dim + self.hidden_dim,
                 out_channels=4 * self.hidden_dim,
                 kernel_size=self.kernel_size,
@@ -65,11 +65,11 @@ class ConvLSTMCell(nn.Module):
 
         if self.batch_norm:
             if self.independent:
-                self.bn = nn.BatchNorm1d(3 * self.hidden_dim)
+                self.bn = nn.BatchNorm2d(3 * self.hidden_dim)
             else:
-                self.bn = nn.BatchNorm1d(4 * self.hidden_dim)
+                self.bn = nn.BatchNorm2d(4 * self.hidden_dim)
 
-            self.bn_out = nn.BatchNorm1d(self.hidden_dim)
+            self.bn_out = nn.BatchNorm2d(self.hidden_dim)
         else:
             self.bn = nn.Identity()
             self.bn_out = nn.Identity()
@@ -127,13 +127,13 @@ class ConvLSTMCell(nn.Module):
 
         return h_next, c_next
 
-    def init_hidden(self, batch_size, size):
+    def init_hidden(self, batch_size, size_x, size_y):
         return (
             torch.zeros(
-                batch_size, self.hidden_dim, size, device=self.conv.weight.device
+                batch_size, self.hidden_dim, size_x, size_y, device=self.conv.weight.device
             ),
             torch.zeros(
-                batch_size, self.hidden_dim, size, device=self.conv.weight.device
+                batch_size, self.hidden_dim, size_x, size_y, device=self.conv.weight.device
             ),
         )
 
@@ -220,7 +220,7 @@ class ConvLSTM(nn.Module):
 
         self.cell_list = nn.ModuleList(cell_list)
 
-        self.final_conv = nn.Conv1d(
+        self.final_conv = nn.Conv2d(
             in_channels=self.hidden_dim[-1],
             out_channels=1,
             kernel_size=self.final_kernel_size,
@@ -261,14 +261,14 @@ class ConvLSTM(nn.Module):
         last_state_list, layer_output
         """
 
-        b, _, _, s = input_tensor.size()
+        b, _, _, sx, sy = input_tensor.size()
 
         # Implement stateful ConvLSTM
         if hidden_state is not None:
             raise NotImplementedError()
         else:
             # Since the init is done in forward. Can send image size here
-            hidden_state = self._init_hidden(batch_size=b, image_size=s)
+            hidden_state = self._init_hidden(batch_size=b, image_size_x=sx, image_size_y=sy)
 
         layer_output_list = []
         last_state_list = []
@@ -311,10 +311,10 @@ class ConvLSTM(nn.Module):
 
         return output, layer_output_list, last_state_list
 
-    def _init_hidden(self, batch_size, image_size):
+    def _init_hidden(self, batch_size, image_size_x, image_size_y):
         init_states = []
         for i in range(self.num_layers):
-            init_states.append(self.cell_list[i].init_hidden(batch_size, image_size))
+            init_states.append(self.cell_list[i].init_hidden(batch_size, image_size_x, image_size_y))
         return init_states
 
     @staticmethod
@@ -425,7 +425,9 @@ class ConvLSTMEnsemble(nn.Module):
         ys = []
         for net in self.models:
             if self.noise > 0.0:
-                X = input_tensor.clone() + torch.randn_like(input_tensor) * self.noise
+                X = input_tensor.clone()
+                # Add noise only to the spectrum, not to the MAS encoding
+                X[:, :-1] + torch.randn_like(input_tensor[:, :-1]) * self.noise
                 y, _, _ = net(X)
             else:
                 y, _, _ = net(input_tensor)
