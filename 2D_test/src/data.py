@@ -757,9 +757,8 @@ class PIPDatasetGLS2D(torch.utils.data.Dataset):
                 a = (np.random.random()*(r[1]-r[0])) + r[0]
             else:
                 a = self.rot_range[irot]
-            R = tv.transforms.RandomRotation(degrees=(a,a))
-            iso = R(iso)
-            brd_specs = R(brd_specs)
+            iso = tv.transforms.functional.rotate(iso, a)
+            brd_specs = tv.transforms.functional.rotate(brd_specs, a)
 
         brd_specs[:, -1] = brd_specs_x[:, -1].unsqueeze(-1).repeat((1,1,1,brd_specs_y.shape[-1]))
 
