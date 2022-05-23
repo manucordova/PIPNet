@@ -14,6 +14,6 @@
 module purge
 module load intel intel-mpi intel-mkl
 
-source activate S2C_gpu
+source activate PIPNet
 
 srun python -u $1 > ${1%.py}.log
