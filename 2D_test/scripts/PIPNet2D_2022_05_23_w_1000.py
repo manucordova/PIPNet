@@ -10,10 +10,6 @@ import scipy as sp
 import importlib
 import pickle as pk
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import matplotlib.animation as anm
-
 sys.path.insert(0, "../src/")
 import data
 import model
