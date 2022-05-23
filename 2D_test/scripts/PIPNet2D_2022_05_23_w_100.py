@@ -108,9 +108,9 @@ if __name__ == "__main__":
 
     train_pars = dict(
         batch_size=4,  # Dataset batch size
-        num_workers=4,  # Number of parallel processes to generate data
-        checkpoint=4,  # Perform evaluation after that many batches
-        n_eval=2,  # Number of batches in the evaluation
+        num_workers=20,  # Number of parallel processes to generate data
+        checkpoint=1000,  # Perform evaluation after that many batches
+        n_eval=200,  # Number of batches in the evaluation
         max_checkpoints=200,  # Maximum number of checkpoints before finishing training
         out_dir="../data/PIPNet2D_2022_05_23_w_100/",  # Output directory
         change_factor={50: 0.0},  # Checkpoints where
