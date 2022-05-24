@@ -107,7 +107,7 @@ if __name__ == "__main__":
     )
 
     train_pars = dict(
-        batch_size=4,  # Dataset batch size
+        batch_size=8,  # Dataset batch size
         num_workers=20,  # Number of parallel processes to generate data
         checkpoint=1000,  # Perform evaluation after that many batches
         n_eval=200,  # Number of batches in the evaluation
@@ -123,8 +123,8 @@ if __name__ == "__main__":
         n_models=1,
         input_dim=2,
         hidden_dim=32,
-        kernel_size=[5, 7, 9, 11, 13, 15],
-        num_layers=6,
+        kernel_size=[5, 7, 9, 11, 13],
+        num_layers=5,
         final_kernel_size=3,
         batch_input=3,
         bias=True,
