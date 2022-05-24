@@ -488,9 +488,11 @@ class CustomLoss(nn.Module):
                 )
             )
             k /= torch.sum(k)
-            k = k.view(1, 1, brd_len)
+            k = torch.outer(k, k)
+            k = k.view(1, 1, brd_len, brd_len)
 
-            self.brd_filt = nn.Conv1d(
+
+            self.brd_filt = nn.Conv2d(
                 in_channels=1,
                 out_channels=1,
                 kernel_size=brd_len,
@@ -545,14 +547,15 @@ class CustomLoss(nn.Module):
         'Broad' loss: comparison between broadened isotropic and predicted spectra
         """
 
-        # Reshape array to allow 1D convolution
-        y2 = y.reshape(-1, 1, y.shape[-1])
-        # Perform 1D convolution
+        # Reshape array to allow 2D convolution
+        y2 = y.reshape(-1, 1, y.shape[-2], y.shape[-1])
+
+        # Perform 2D convolution
         y2 = self.brd_filt(y2)
 
-        # Reshape array to allow 1D convolution
-        y2_trg = y_trg.reshape(-1, 1, y_trg.shape[-1])
-        # Perform 1D convolution
+        # Reshape array to allow 2D convolution
+        y2_trg = y_trg.reshape(-1, 1, y_trg.shape[-2], y_trg.shape[-1])
+        # Perform 2D convolution
         y2_trg = self.brd_filt(y2_trg)
 
         # Compute difference between output and target spectra
