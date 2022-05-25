@@ -95,7 +95,7 @@ if __name__ == "__main__":
         srp_exp=2.0,
         srp_offset=1.0,
         srp_fac=100000.0,
-        brd_w=100.0,
+        brd_w=10.0,
         brd_sig=3.0,
         brd_len=15,
         brd_exp=2.0,

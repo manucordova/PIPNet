@@ -94,8 +94,8 @@ if __name__ == "__main__":
         srp_w=1.0,
         srp_exp=2.0,
         srp_offset=1.0,
-        srp_fac=1000.0,
-        brd_w=100.0,
+        srp_fac=10000.0,
+        brd_w=10.0,
         brd_sig=3.0,
         brd_len=15,
         brd_exp=2.0,
@@ -112,7 +112,7 @@ if __name__ == "__main__":
         checkpoint=200,  # Perform evaluation after that many batches
         n_eval=50,  # Number of batches in the evaluation
         max_checkpoints=200,  # Maximum number of checkpoints before finishing training
-        out_dir="../data/PIPNet2D_2022_05_23_w_1000/",  # Output directory
+        out_dir="../data/PIPNet2D_2022_05_25_w_10000_2_layers/",  # Output directory
         change_factor={50: 0.0},  # Checkpoints where
         avg_models=False,
         device="cuda" if torch.cuda.is_available() else "cpu",
@@ -122,9 +122,9 @@ if __name__ == "__main__":
     model_pars = dict(
         n_models=1,
         input_dim=2,
-        hidden_dim=32,
-        kernel_size=[5, 7, 9, 11, 13],
-        num_layers=5,
+        hidden_dim=16,
+        kernel_size=[5, 15],
+        num_layers=2,
         final_kernel_size=3,
         batch_input=3,
         bias=True,
