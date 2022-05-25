@@ -131,6 +131,9 @@ dmypy.json
 1D/data/
 1D/figures/
 
+2D_test/data/
+2D_test/figures/
+
 *.DS_Store
 *.out
 *.log

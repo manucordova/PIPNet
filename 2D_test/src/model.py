@@ -542,7 +542,7 @@ class CustomLoss(nn.Module):
 
         return torch.mean(x) * self.srp_w
 
-    def brd_loss(self, y, y_trg):
+    def brd_loss(self, y, y_trg, return_specs=False):
         """
         'Broad' loss: comparison between broadened isotropic and predicted spectra
         """
@@ -557,6 +557,9 @@ class CustomLoss(nn.Module):
         y2_trg = y_trg.reshape(-1, 1, y_trg.shape[-2], y_trg.shape[-1])
         # Perform 2D convolution
         y2_trg = self.brd_filt(y2_trg)
+
+        if return_specs:
+            return y2, y2_trg
 
         # Compute difference between output and target spectra
         x = torch.abs(y2 - y2_trg)

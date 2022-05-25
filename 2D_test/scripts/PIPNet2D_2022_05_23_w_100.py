@@ -95,13 +95,13 @@ if __name__ == "__main__":
         srp_exp=2.0,
         srp_offset=1.0,
         srp_fac=100.0,
-        brd_w=10.0,
+        brd_w=100.0,
         brd_sig=3.0,
         brd_len=15,
         brd_exp=2.0,
         brd_offset=1.0,
         brd_fac=0.0,
-        int_w=0.1,
+        int_w=0.01,
         int_exp=2.0,
         return_components=True,
     )
@@ -141,7 +141,7 @@ if __name__ == "__main__":
 
     opt = torch.optim.Adam(
         net.parameters(),
-        lr=1e-3,
+        lr=1e-4,
         betas=(0.9, 0.999),
         eps=1e-08,
         weight_decay=0,
