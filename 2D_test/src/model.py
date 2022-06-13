@@ -11,6 +11,7 @@ import torch
 import torch.nn as nn
 
 
+
 class ConvLSTMCell(nn.Module):
     def __init__(
         self,
@@ -18,7 +19,6 @@ class ConvLSTMCell(nn.Module):
         hidden_dim,
         kernel_size,
         bias,
-        batch_norm=False,
         independent=False,
     ):
         """
@@ -44,7 +44,6 @@ class ConvLSTMCell(nn.Module):
         self.padding = kernel_size // 2
         self.bias = bias
         self.independent = independent
-        self.batch_norm = batch_norm
 
         if self.independent:
             self.conv = nn.Conv2d(
@@ -62,17 +61,6 @@ class ConvLSTMCell(nn.Module):
                 padding=self.padding,
                 bias=self.bias,
             )
-
-        if self.batch_norm:
-            if self.independent:
-                self.bn = nn.BatchNorm2d(3 * self.hidden_dim)
-            else:
-                self.bn = nn.BatchNorm2d(4 * self.hidden_dim)
-
-            self.bn_out = nn.BatchNorm2d(self.hidden_dim)
-        else:
-            self.bn = nn.Identity()
-            self.bn_out = nn.Identity()
 
     def analyze(self, input_tensor, cur_state):
 
@@ -97,7 +85,7 @@ class ConvLSTMCell(nn.Module):
         g = torch.tanh(cc_g)
 
         c_next = f * c_cur + i * g
-        h_next = o * torch.tanh(self.bn_out(c_next))
+        h_next = o * torch.tanh(c_next)
 
         return i, f, o, g, h_next, c_next
 
@@ -107,8 +95,6 @@ class ConvLSTMCell(nn.Module):
         # concatenate along channel axis
         combined = torch.cat([input_tensor, h_cur], dim=1)
         combined_conv = self.conv(combined)
-
-        combined_conv = self.bn(combined_conv)
 
         if self.independent:
             cc_i, cc_f, cc_g = torch.split(combined_conv, self.hidden_dim, dim=1)
@@ -123,7 +109,7 @@ class ConvLSTMCell(nn.Module):
         g = torch.tanh(cc_g)
 
         c_next = f * c_cur + i * g
-        h_next = o * torch.tanh(self.bn_out(c_next))
+        h_next = o * torch.tanh(c_next)
 
         return h_next, c_next
 
@@ -172,7 +158,6 @@ class ConvLSTM(nn.Module):
         batch_input=1,
         bias=True,
         final_bias=True,
-        batch_norm=False,
         independent=False,
         return_all_layers=False,
         final_kernel_size=1,
@@ -213,7 +198,6 @@ class ConvLSTM(nn.Module):
                     hidden_dim=self.hidden_dim[i],
                     kernel_size=self.kernel_size[i],
                     bias=self.bias,
-                    batch_norm=batch_norm,
                     independent=independent,
                 )
             )
@@ -360,7 +344,6 @@ class ConvLSTMEnsemble(nn.Module):
         bias=True,
         final_bias=True,
         return_all_layers=False,
-        batch_norm=False,
         independent=False,
         final_kernel_size=1,
         final_act="sigmoid",
@@ -397,11 +380,10 @@ class ConvLSTMEnsemble(nn.Module):
                     batch_input=batch_input,
                     bias=bias,
                     final_bias=final_bias,
-                    batch_norm=batch_norm,
                     independent=independent,
                     return_all_layers=return_all_layers,
                     final_kernel_size=fks,
-                    final_act="sigmoid",
+                    final_act=final_act,
                 )
             )
 
@@ -414,7 +396,7 @@ class ConvLSTMEnsemble(nn.Module):
         Parameters
         ----------
         input_tensor: todo
-            4-D Tensor of shape (b, t, c, s)
+            4-D Tensor of shape (b, t, c, sx, sy)
         hidden_state: todo
             None. todo implement stateful
         Returns
@@ -427,7 +409,7 @@ class ConvLSTMEnsemble(nn.Module):
             if self.noise > 0.0:
                 X = input_tensor.clone()
                 # Add noise only to the spectrum, not to the MAS encoding
-                X[:, :-1] + torch.randn_like(input_tensor[:, :-1]) * self.noise
+                X[:, :, :-1] + torch.randn_like(input_tensor[:, :, :-1]) * self.noise
                 y, _, _ = net(X)
             else:
                 y, _, _ = net(input_tensor)
@@ -441,6 +423,8 @@ class ConvLSTMEnsemble(nn.Module):
 class CustomLoss(nn.Module):
     def __init__(
         self,
+        trg_fuzz=0,
+        trg_fuzz_len=25,
         srp_w=1.0,
         srp_exp=2.0,
         srp_offset=1.0,
@@ -453,10 +437,13 @@ class CustomLoss(nn.Module):
         brd_fac=0.0,
         int_w=0.0,
         int_exp=2.0,
+        int_edge=0,
         return_components=False,
         device="cpu",
     ):
         super(CustomLoss, self).__init__()
+
+        self.trg_fuzz = trg_fuzz > 0
 
         self.srp_w = srp_w
         self.srp_exp = srp_exp
@@ -470,11 +457,38 @@ class CustomLoss(nn.Module):
 
         self.int_w = int_w
         self.int_exp = int_exp
+        self.int_edge = int_edge
 
         self.return_components = return_components
 
         if srp_w == 0.0 and brd_w == 0.0:
             raise ValueError("At least one of the loss weights should be non-zero!")
+        
+        if trg_fuzz > 0:
+            trg_pad = trg_fuzz_len // 2
+            k = (
+                1.0
+                / (2 * np.pi * (trg_fuzz ** 2))
+                * torch.exp(
+                    -torch.square(torch.arange(trg_fuzz_len) - trg_pad)
+                    / (2 * (trg_fuzz ** 2))
+                )
+            )
+            k = torch.outer(k, k)
+            k /= torch.max(k)
+            k = k.view(1, 1, trg_fuzz_len, trg_fuzz_len)
+
+
+            self.trg_filt = nn.Conv2d(
+                in_channels=1,
+                out_channels=1,
+                kernel_size=trg_fuzz_len,
+                padding=trg_pad,
+                bias=False,
+            )
+            self.trg_filt.weight.data = k
+            self.trg_filt.weight.requires_grad = False
+            self.trg_filt.to(device)
 
         if self.brd_w > 0.0:
 
@@ -505,22 +519,6 @@ class CustomLoss(nn.Module):
 
         return
 
-    def update(self, exp=None, offset=None, factor=None):
-
-        if exp is not None:
-            print(f"Exponent updated to {exp}")
-            self.srp_exp = exp
-
-        if offset is not None:
-            print(f"Offset updated to {offset}")
-            self.srp_offset = offset
-
-        if factor is not None:
-            print(f"Factor updated to {factor}")
-            self.srp_fac = factor
-
-        return
-
     def srp_loss(self, y, y_trg):
         """
         'Sharp' loss: direct comparison between isotropic and predicted spectra
@@ -547,16 +545,11 @@ class CustomLoss(nn.Module):
         'Broad' loss: comparison between broadened isotropic and predicted spectra
         """
 
-        # Reshape array to allow 2D convolution
-        y2 = y.reshape(-1, 1, y.shape[-2], y.shape[-1])
+        # Perform 2D convolution
+        y2 = self.brd_filt(y)
 
         # Perform 2D convolution
-        y2 = self.brd_filt(y2)
-
-        # Reshape array to allow 2D convolution
-        y2_trg = y_trg.reshape(-1, 1, y_trg.shape[-2], y_trg.shape[-1])
-        # Perform 2D convolution
-        y2_trg = self.brd_filt(y2_trg)
+        y2_trg = self.brd_filt(y_trg)
 
         if return_specs:
             return y2, y2_trg
@@ -582,7 +575,15 @@ class CustomLoss(nn.Module):
         Intergral loss: Compare spectra integral
         """
 
-        x = torch.mean(y, dim=-1) - torch.mean(y_trg, dim=-1)
+        if self.int_edge > 0:
+
+            x = torch.mean(y[..., self.int_edge:-self.int_edge], dim=-1) - torch.mean(y_trg[..., self.int_edge:-self.int_edge], dim=-1)
+            x = torch.mean(x[..., self.int_edge:-self.int_edge], dim=-1)
+        
+        else:
+
+            x = torch.mean(y, dim=-1) - torch.mean(y_trg, dim=-1)
+            x = torch.mean(x, dim=-1)
 
         x = torch.pow(torch.abs(x), self.int_exp)
 
@@ -592,6 +593,12 @@ class CustomLoss(nn.Module):
 
         components = []
         tot_loss = 0.0
+
+        y = y.reshape(-1, 1, y.shape[-2], y.shape[-1])
+        y_trg = y_trg.reshape(-1, 1, y_trg.shape[-2], y_trg.shape[-1])        
+
+        if self.trg_fuzz:
+            y_trg = self.trg_filt(y_trg)
 
         if self.srp_w > 0.0:
             tmp_loss = self.srp_loss(y, y_trg)

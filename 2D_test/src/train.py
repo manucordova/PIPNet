@@ -175,8 +175,9 @@ def train(dataset, net, opt, loss, sch, train_pars):
             sch.step(np.mean(val_losses))
 
             # Update loss
-            if i_chk in train_pars["change_factor"]:
-                loss.update(factor=train_pars["change_factor"][i_chk])
+            if i_chk in train_pars["change_loss"]:
+                for k in train_pars["change_loss"][i_chk]:
+                    setattr(loss, k, train_pars["change_loss"][i_chk][k])
 
             i_chk += 1
 

@@ -401,7 +401,7 @@ class ConvLSTMEnsemble(nn.Module):
                     independent=independent,
                     return_all_layers=return_all_layers,
                     final_kernel_size=fks,
-                    final_act="sigmoid",
+                    final_act=final_act,
                 )
             )
 
