@@ -91,18 +91,21 @@ if __name__ == "__main__":
     )
 
     loss_pars = dict(
+        trg_fuzz=5.0,
+        trg_fuzz_len=25,
         srp_w=1.0,
         srp_exp=2.0,
         srp_offset=1.0,
-        srp_fac=10000.0,
-        brd_w=1.0,
-        brd_sig=3.0,
-        brd_len=15,
+        srp_fac=100.,
+        brd_w=1e-4,
+        brd_sig=5.0,
+        brd_len=25,
         brd_exp=2.0,
         brd_offset=1.0,
-        brd_fac=10000.0,
-        int_w=0.,
+        brd_fac=0.,
+        int_w=0.1,
         int_exp=2.0,
+        int_edge=0,
         return_components=True,
     )
 
