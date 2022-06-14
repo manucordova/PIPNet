@@ -443,7 +443,8 @@ class CustomLoss(nn.Module):
     ):
         super(CustomLoss, self).__init__()
 
-        self.trg_fuzz = trg_fuzz > 0
+        self.trg_fuzz = trg_fuzz
+        self.trg_fuzz_len = trg_fuzz_len
 
         self.srp_w = srp_w
         self.srp_exp = srp_exp
@@ -454,69 +455,70 @@ class CustomLoss(nn.Module):
         self.brd_exp = brd_exp
         self.brd_offset = brd_offset
         self.brd_fac = brd_fac
+        self.brd_sig = brd_sig
+        self.brd_len = brd_len
 
         self.int_w = int_w
         self.int_exp = int_exp
         self.int_edge = int_edge
 
         self.return_components = return_components
+        self.device = device
 
         if srp_w == 0.0 and brd_w == 0.0:
             raise ValueError("At least one of the loss weights should be non-zero!")
         
-        if trg_fuzz > 0:
-            trg_pad = trg_fuzz_len // 2
-            k = (
-                1.0
-                / (2 * np.pi * (trg_fuzz ** 2))
-                * torch.exp(
-                    -torch.square(torch.arange(trg_fuzz_len) - trg_pad)
-                    / (2 * (trg_fuzz ** 2))
-                )
-            )
-            k = torch.outer(k, k)
-            k /= torch.max(k)
-            k = k.view(1, 1, trg_fuzz_len, trg_fuzz_len)
+        if self.trg_fuzz > 0.:
 
-
-            self.trg_filt = nn.Conv2d(
-                in_channels=1,
-                out_channels=1,
-                kernel_size=trg_fuzz_len,
-                padding=trg_pad,
-                bias=False,
-            )
-            self.trg_filt.weight.data = k
-            self.trg_filt.weight.requires_grad = False
-            self.trg_filt.to(device)
+            self.trg_filt = self.make_filt(self.trg_fuzz, self.trg_fuzz_len)
 
         if self.brd_w > 0.0:
 
-            brd_pad = brd_len // 2
-            k = (
-                1.0
-                / (2 * np.pi * (brd_sig ** 2))
-                * torch.exp(
-                    -torch.square(torch.arange(brd_len) - brd_pad)
-                    / (2 * (brd_sig ** 2))
-                )
+            self.brd_filt = self.make_filt(self.brd_sig, self.brd_len)
+
+        return
+    
+    def make_filt(self, sig, l):
+
+        pad = l // 2
+        k = (
+            1.0
+            / (2 * np.pi * (sig ** 2))
+            * torch.exp(
+                -torch.square(torch.arange(l) - pad)
+                / (2 * (sig ** 2))
             )
-            k /= torch.sum(k)
-            k = torch.outer(k, k)
-            k = k.view(1, 1, brd_len, brd_len)
+        )
+        k = torch.outer(k, k)
+        k /= torch.max(k)
+        k = k.view(1, 1, l, l)
 
 
-            self.brd_filt = nn.Conv2d(
-                in_channels=1,
-                out_channels=1,
-                kernel_size=brd_len,
-                padding=brd_pad,
-                bias=False,
-            )
-            self.brd_filt.weight.data = k
-            self.brd_filt.weight.requires_grad = False
-            self.brd_filt.to(device)
+        filt = nn.Conv2d(
+            in_channels=1,
+            out_channels=1,
+            kernel_size=l,
+            padding=pad,
+            bias=False,
+        )
+        filt.weight.data = k
+        filt.weight.requires_grad = False
+        filt.to(self.device)
 
+        return filt
+    
+    def update_param(self, k, val):
+
+        self.__setattr__(k, val)
+
+        if self.trg_fuzz > 0.:
+
+            self.trg_filt = self.make_filt(self.trg_fuzz, self.trg_fuzz_len)
+
+        if self.brd_w > 0.0:
+
+            self.brd_filt = self.make_filt(self.brd_sig, self.brd_len)
+        
         return
 
     def srp_loss(self, y, y_trg):
@@ -597,7 +599,7 @@ class CustomLoss(nn.Module):
         y = y.reshape(-1, 1, y.shape[-2], y.shape[-1])
         y_trg = y_trg.reshape(-1, 1, y_trg.shape[-2], y_trg.shape[-1])        
 
-        if self.trg_fuzz:
+        if self.trg_fuzz > 0.:
             y_trg = self.trg_filt(y_trg)
 
         if self.srp_w > 0.0:

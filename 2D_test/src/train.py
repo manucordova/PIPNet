@@ -176,8 +176,8 @@ def train(dataset, net, opt, loss, sch, train_pars):
 
             # Update loss
             if i_chk in train_pars["change_loss"]:
-                for k in train_pars["change_loss"][i_chk]:
-                    setattr(loss, k, train_pars["change_loss"][i_chk][k])
+                for k, v in train_pars["change_loss"][i_chk].items():
+                    loss.update_param(k, v)
 
             i_chk += 1
 
