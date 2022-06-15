@@ -120,9 +120,9 @@ if __name__ == "__main__":
         out_dir="../data/PIPNet2D_2022_06_15/",  # Output directory
         change_loss={10: {"trg_fuzz": 3.0, "trg_fuzz_len": 15},
                      20: {"trg_fuzz": 1.0, "trg_fuzz_len": 5},
-                     30: {"trg_fuzz": 0.}
-                     40: {"srp_fac": 10.}
-                     50: {"srp_fac": 0.}
+                     30: {"trg_fuzz": 0.},
+                     40: {"srp_fac": 10.},
+                     50: {"srp_fac": 0.},
                     },  # Checkpoints where loss parameter are updated
         avg_models=False,
         device="cuda" if torch.cuda.is_available() else "cpu",
