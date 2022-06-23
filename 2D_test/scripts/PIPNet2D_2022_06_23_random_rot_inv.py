@@ -146,7 +146,7 @@ if __name__ == "__main__":
         noise=1.0e-2,
     )
 
-    dataset = data.PIPDatasetGLS2D(data_pars, data_pars, rot_range=[-45.])
+    dataset = data.PIPDatasetGLS2D(data_pars, data_pars, rot_range=[[0., 360.]])
 
     net = model.ConvLSTMEnsemble(**model_pars).to(train_pars["device"])
 
