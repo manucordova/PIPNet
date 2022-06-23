@@ -391,7 +391,7 @@ class ConvLSTMEnsemble(nn.Module):
 
         return
 
-    def forward(self, input_tensor, hidden_state=None):
+    def forward(self, input_tensor, hidden_state=None, invert=False):
         """
         Parameters
         ----------
@@ -403,6 +403,9 @@ class ConvLSTMEnsemble(nn.Module):
         -------
         last_state_list, layer_output
         """
+
+        if invert:
+            input_tensor = input_tensor[:, ::-1]
 
         ys = []
         for net in self.models:
