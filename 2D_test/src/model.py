@@ -405,7 +405,7 @@ class ConvLSTMEnsemble(nn.Module):
         """
 
         if invert:
-            input_tensor = input_tensor[:, ::-1]
+            input_tensor = input_tensor.flip(1)
 
         ys = []
         for net in self.models:
