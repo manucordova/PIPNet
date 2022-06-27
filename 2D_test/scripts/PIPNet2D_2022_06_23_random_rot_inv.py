@@ -125,7 +125,6 @@ if __name__ == "__main__":
                      50: {"srp_fac": 0.},
                     },  # Checkpoints where loss parameter are updated
         avg_models=False,
-        invert=True,
         device="cuda" if torch.cuda.is_available() else "cpu",
         monitor_end="\n",
     )
@@ -141,6 +140,7 @@ if __name__ == "__main__":
         bias=True,
         final_bias=False,
         independent=True,
+        invert=True,
         return_all_layers=True,
         final_act="sigmoid",
         noise=1.0e-2,

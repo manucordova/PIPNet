@@ -26,7 +26,7 @@ def evaluate(data_generator, net, loss, train_pars, i_chk):
 
         # Forward pass
         with torch.no_grad():
-            y_pred, y_std, ys_pred = net(X, invert=train_pars["invert"])
+            y_pred, y_std, ys_pred = net(X)
 
         if net.return_all_layers:
             y = y.repeat((1, y_pred.shape[1], 1, 1))
@@ -111,7 +111,7 @@ def train(dataset, net, opt, loss, sch, train_pars):
         opt.zero_grad()
 
         # Forward pass
-        y_pred, y_std, ys_pred = net(X, invert=train_pars["invert"])
+        y_pred, y_std, ys_pred = net(X)
 
         if net.return_all_layers:
             y = y.repeat((1, y_pred.shape[1], 1, 1))

@@ -348,9 +348,11 @@ class ConvLSTMEnsemble(nn.Module):
         final_kernel_size=1,
         final_act="sigmoid",
         noise=0.0,
+        invert=False,
     ):
         super(ConvLSTMEnsemble, self).__init__()
 
+        self.inv = invert
         self.is_ensemble = True
         self.noise = noise
         self.return_all_layers = return_all_layers
@@ -391,7 +393,7 @@ class ConvLSTMEnsemble(nn.Module):
 
         return
 
-    def forward(self, input_tensor, hidden_state=None, invert=False):
+    def forward(self, input_tensor, hidden_state=None):
         """
         Parameters
         ----------
@@ -404,7 +406,7 @@ class ConvLSTMEnsemble(nn.Module):
         last_state_list, layer_output
         """
 
-        if invert:
+        if self.inv:
             input_tensor = input_tensor.flip(1)
 
         ys = []
