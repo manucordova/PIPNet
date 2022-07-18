@@ -365,9 +365,11 @@ class ConvLSTMEnsemble(nn.Module):
         final_kernel_size=1,
         final_act="sigmoid",
         noise=0.0,
+        invert=False,
     ):
         super(ConvLSTMEnsemble, self).__init__()
 
+        self.inv = invert
         self.is_ensemble = True
         self.noise = noise
         self.return_all_layers = return_all_layers
@@ -422,10 +424,15 @@ class ConvLSTMEnsemble(nn.Module):
         last_state_list, layer_output
         """
 
+        if self.inv:
+            input_tensor = input_tensor.flip(1)
+
         ys = []
         for net in self.models:
             if self.noise > 0.0:
-                X = input_tensor.clone() + torch.randn_like(input_tensor) * self.noise
+                X = input_tensor.clone()
+                # Add noise only to the spectrum, not to the MAS encoding
+                X[:, :, :-1] += torch.randn_like(input_tensor[:, :, :-1]) * self.noise
                 y, _, _ = net(X)
             else:
                 y, _, _ = net(input_tensor)
