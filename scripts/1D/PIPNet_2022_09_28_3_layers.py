@@ -115,7 +115,7 @@ loss_pars = dict(
 )
 
 train_pars = dict(
-    batch_size = 64,
+    batch_size = 16,
     num_workers = 20,
     batches_per_epoch = 1000,
     batches_per_eval = 200,
