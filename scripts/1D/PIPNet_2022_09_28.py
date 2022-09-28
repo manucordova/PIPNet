@@ -8,6 +8,8 @@ from pipnet import train
 
 np.random.seed(1)
 
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
 iso_pars = dict(
     td = 512,
     Fs = 12_800,
@@ -100,16 +102,16 @@ model_pars = dict(
 )
 
 loss_pars = dict(
-    trg_fuzz=3.,
-    trg_fuzz_len=25,
-    ndim=1,
-    exp=1.0,
-    offset=1.0,
-    factor=100.0,
-    int_w=0.0,
-    int_exp=2.0,
-    return_components=False,
-    device="cuda" if torch.cuda.is_available() else "cpu",
+    trg_fuzz = 3.,
+    trg_fuzz_len = 25,
+    ndim = 1,
+    exp = 1.0,
+    offset = 1.0,
+    factor = 100.0,
+    int_w = 0.0,
+    int_exp = 2.0,
+    return_components = False,
+    device = device,
 )
 
 train_pars = dict(
@@ -122,12 +124,12 @@ train_pars = dict(
                  50: {"trg_fuzz": 0.0, "factor": 0.},
                 },
     out_dir = "../../data/1D/PIPNet_2022_09_28_6_layers/",
-    device = "cuda" if torch.cuda.is_available() else "cpu",
+    device = device,
     monitor_end = "\n"
 )
 
 dataset = data.Dataset(**data_pars)
-net = model.ConvLSTMEnsemble(**model_pars)
+net = model.ConvLSTMEnsemble(**model_pars).to(device)
 loss = model.PIPLoss(**loss_pars)
 opt = torch.optim.Adam(net.parameters(), lr=1e-3)
 sch = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, factor=0.5, patience=50)
