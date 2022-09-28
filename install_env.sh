@@ -5,3 +5,4 @@ source activate PIPNet
 conda install cudatoolkit=11.3 -c pytorch -y
 
 pip install -e .
+
