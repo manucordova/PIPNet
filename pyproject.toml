@@ -1,0 +1,20 @@
+[project]
+name = "pipnet"
+description = "Pure Isotropic NMR spectra using deep learning"
+version = "0.0.1"
+authors = [
+    { name = "Manuel Cordova", email = "manuel.cordova@epfl.ch" }
+]
+
+dependencies = [
+    "numpy",
+    "scipy",
+    "setuptools",
+    "torch",
+    "torchvision",
+    "torchaudio",
+    "matplotlib"
+]
+
+[build-system]
+requires = ["numpy", "scipy", "torch", "torchvision", "torchaudio", "matplotlib", "setuptools", "wheel"]

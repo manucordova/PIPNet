@@ -1,5 +1,7 @@
 conda create -n PIPNet python=3.9 -y
 
-conda instal -n PIPNet -c conda-forge numpy scipy -y
+source activate PIPNet
 
-conda install -n PIPNet pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch -y
+conda install cudatoolkit=11.3 -c pytorch -y
+
+pip install -e .

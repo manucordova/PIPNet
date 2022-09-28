@@ -1,2 +1,2 @@
 # PIPNet
-Pure Isotropic Proton (PIP) spectra through deep learning
+Pure Isotropic Proton (PIP) spectra using deep learning

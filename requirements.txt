@@ -1,0 +1,8 @@
+# Python library
+numpy
+scipy
+torch
+torchvision
+torchaudio
+matplotlib
+setuptools
