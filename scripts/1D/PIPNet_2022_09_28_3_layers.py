@@ -7,7 +7,7 @@ from pipnet import model
 from pipnet import train
 
 np.random.seed(1)
-
+torch.cuda.empty_cache()
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 iso_pars = dict(
@@ -84,10 +84,10 @@ data_pars = dict(
 
 model_pars = dict(
     input_dim = 2,
-    n_models = 16,
-    hidden_dim = [64, 64, 64, 64, 64, 64],
-    kernel_size = [5, 5, 5, 5, 5, 5],
-    num_layers = 6,
+    n_models = 4,
+    hidden_dim = [32, 32, 32],
+    kernel_size = [5, 5, 5],
+    num_layers = 3,
     batch_input = 4,
     bias = True,
     output_bias = True,
@@ -123,7 +123,7 @@ train_pars = dict(
     change_loss={20: {"trg_fuzz": 1.0, "factor": 10.},
                  50: {"trg_fuzz": 0.0, "factor": 0.},
                 },
-    out_dir = "../../data/1D/PIPNet_2022_09_28_6_layers/",
+    out_dir = "../../data/1D/PIPNet_2022_09_28_3_layers/",
     device = device,
     monitor_end = "\n"
 )
