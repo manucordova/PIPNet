@@ -632,6 +632,8 @@ class Dataset(torch.utils.data.Dataset):
 
         return output
 
+
+
     def normalize_spectra(self, iso, specs, brd_specs):
 
         # Normalize spectra
@@ -640,6 +642,8 @@ class Dataset(torch.utils.data.Dataset):
         brd_specs /= self.norm_mas
 
         return np.real(iso), np.real(specs), brd_specs
+
+
 
     def finalize_spectra(self, iso, specs, brd_specs, ws):
 
@@ -680,6 +684,33 @@ class Dataset(torch.utils.data.Dataset):
                 torch.from_numpy(specs.astype(np.float32)),
                 torch.from_numpy(iso.astype(np.float32)))
     
+
+
+    def generate_batch(self, size=4):
+        """
+        Generate a batch of data:
+
+        Input:      - size  Batch size
+
+        Outputs:    - X     Batch of inputs
+                    - y     Batch of outputs
+        """
+
+        X = []
+        y = []
+
+        for i in range(size):
+            Xi, _, yi = self.__getitem__(0)
+            X.append(Xi.unsqueeze(0))
+            y.append(yi.unsqueeze(0))
+
+        X = torch.cat(X, dim=0)
+        y = torch.cat(y, dim=0)
+
+        return X, y
+
+
+    
     def __len__(self):
         """
         Dummy function for pytorch to work properly
@@ -687,6 +718,8 @@ class Dataset(torch.utils.data.Dataset):
 
         return int(1e12)
     
+
+
     def __getitem__(self, _):
         """
         Generate an input

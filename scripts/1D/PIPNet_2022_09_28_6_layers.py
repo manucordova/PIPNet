@@ -1,5 +1,6 @@
 import numpy as np
-
+import os
+import pickle as pk
 import torch
 
 from pipnet import data
@@ -133,6 +134,15 @@ net = model.ConvLSTMEnsemble(**model_pars).to(device)
 loss = model.PIPLoss(**loss_pars)
 opt = torch.optim.Adam(net.parameters(), lr=1e-3)
 sch = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, factor=0.5, patience=50)
+
+if train_pars["out_dir"] is not None and not os.path.exists(train_pars["out_dir"]):
+    os.mkdir(train_pars["out_dir"])
+
+with open(train_pars["out_dir"] + "model_pars.pk", "wb") as F:
+    pk.dump(model_pars, F)
+
+with open(train_pars["out_dir"] + "data_pars.pk", "wb") as F:
+    pk.dump(data_pars, F)
 
 train.train(
     dataset,

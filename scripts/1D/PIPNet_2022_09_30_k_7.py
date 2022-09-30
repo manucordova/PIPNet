@@ -86,9 +86,9 @@ data_pars = dict(
 model_pars = dict(
     input_dim = 2,
     n_models = 4,
-    hidden_dim = [32, 32, 32],
-    kernel_size = [5, 5, 5],
-    num_layers = 3,
+    hidden_dim = [32, 32, 32, 32, 32, 32],
+    kernel_size = [7, 7, 7, 7, 7, 7],
+    num_layers = 6,
     batch_input = 4,
     bias = True,
     output_bias = True,
@@ -124,7 +124,7 @@ train_pars = dict(
     change_loss={20: {"trg_fuzz": 1.0, "factor": 10.},
                  50: {"trg_fuzz": 0.0, "factor": 0.},
                 },
-    out_dir = "../../data/1D/PIPNet_2022_09_28_3_layers/",
+    out_dir = "../../data/1D/PIPNet_2022_09_30_k_7/",
     device = device,
     monitor_end = "\n"
 )
@@ -133,7 +133,7 @@ dataset = data.Dataset(**data_pars)
 net = model.ConvLSTMEnsemble(**model_pars).to(device)
 loss = model.PIPLoss(**loss_pars)
 opt = torch.optim.Adam(net.parameters(), lr=1e-3)
-sch = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, factor=0.5, patience=10)
+sch = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, factor=0.5, patience=50)
 
 if train_pars["out_dir"] is not None and not os.path.exists(train_pars["out_dir"]):
     os.mkdir(train_pars["out_dir"])
