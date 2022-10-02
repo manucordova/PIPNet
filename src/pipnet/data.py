@@ -560,6 +560,9 @@ class Dataset(torch.utils.data.Dataset):
             m = 1.
         if m < 0.:
             m = 0.
+        
+        if w < 1.:
+            w = 1.
 
         y = (1-m) * np.exp(-4 * np.log(2) * np.square(x-p) / (w ** 2))
 
