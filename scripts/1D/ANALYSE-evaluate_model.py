@@ -35,7 +35,7 @@ fig_dir = f"../../figures/1D/{mod}/"
 
 batch_size = 16
 n_batch = 64
-n_show = batch_size * n_batch
+n_show = 64
 
 epoch = 200
 eval_all_steps = False

@@ -27,6 +27,8 @@ from pipnet import utils
 import scipy
 import scipy.io
 
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
 np.random.seed(123)
 
 
@@ -125,7 +127,7 @@ with open(f"{in_dir}data_pars.pk", "rb") as F:
 
 
 net = model.ConvLSTMEnsemble(**model_pars)
-net.load_state_dict(torch.load(in_dir + f"epoch_{epoch}_network", map_location=torch.device("cpu")))
+net.load_state_dict(torch.load(in_dir + f"epoch_{epoch}_network", map_location=torch.device(device)))
 net = net.eval()
 
 
