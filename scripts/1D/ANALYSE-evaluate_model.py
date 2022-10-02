@@ -1324,37 +1324,37 @@ if eval_constant:
     dataset = data.Dataset(**data_pars2)
 
     X = []
-        y = []
-        y_pred = []
-        y_std = []
-        ys_pred = []
-        for ibatch in range(n_batch):
-            # Generate dataset
-            Xi, yi = dataset.generate_batch(size=batch_size)
-            
-            print(f"  Batch {ibatch + 1}/{n_batch}")
+    y = []
+    y_pred = []
+    y_std = []
+    ys_pred = []
+    for ibatch in range(n_batch):
+        # Generate dataset
+        Xi, yi = dataset.generate_batch(size=batch_size)
 
-            # Make predictions
-            with torch.no_grad():
-                yi_pred, yi_std, yis_pred = net(Xi)
+        print(f"  Batch {ibatch + 1}/{n_batch}")
 
-            if net.return_all_layers:
-                if net.ndim == 1:
-                    yi = yi.repeat((1, yi_pred.shape[1], 1))
-                elif net.ndim == 2:
-                    yi = yi.repeat((1, yi_pred.shape[1], 1, 1))
-            
-            X.append(Xi)
-            y.append(yi)
-            y_pred.append(yi_pred)
-            y_std.append(yi_std)
-            ys_pred.append(yis_pred)
-        
-        X = torch.cat(X)
-        y = torch.cat(y)
-        y_pred = torch.cat(y_pred)
-        y_std = torch.cat(y_std)
-        ys_pred = torch.cat(ys_pred, dim=1)
+        # Make predictions
+        with torch.no_grad():
+            yi_pred, yi_std, yis_pred = net(Xi)
+
+        if net.return_all_layers:
+            if net.ndim == 1:
+                yi = yi.repeat((1, yi_pred.shape[1], 1))
+            elif net.ndim == 2:
+                yi = yi.repeat((1, yi_pred.shape[1], 1, 1))
+
+        X.append(Xi)
+        y.append(yi)
+        y_pred.append(yi_pred)
+        y_std.append(yi_std)
+        ys_pred.append(yis_pred)
+
+    X = torch.cat(X)
+    y = torch.cat(y)
+    y_pred = torch.cat(y_pred)
+    y_std = torch.cat(y_std)
+    ys_pred = torch.cat(ys_pred, dim=1)
 
     for ishow in range(n_show):
         utils.plot_iso_prediction(
