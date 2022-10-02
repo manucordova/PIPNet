@@ -16,10 +16,8 @@ module load intel intel-mpi intel-mkl
 
 source activate PIPNet
 
-#srun python -u $1 > ${1%.py}.log
+srun python -u $1 > ${1%.py}.log
 
 srun python -u ANALYSE-visualize_training.py ${1%.py} >> ${1%.py}.log
-
-srun python -u ANALYSE-predict_experimental.py ${1%.py} >> ${1%.py}.log
 
 srun python -u ANALYSE-evaluate_model.py ${1%.py} >> ${1%.py}.log
