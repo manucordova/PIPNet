@@ -80,7 +80,7 @@ data_pars = dict(
     mas_spec_norm = 64., # Normalization factor for MAS spectra
     wr_norm_factor = 100_000.,
     wr_inv = False, # Encode inverse of MAS rate instead of MAS rate
-    gen_mas_shifts = True,
+    gen_mas_shifts = False,
 )
 
 model_pars = dict(
@@ -120,7 +120,7 @@ train_pars = dict(
     num_workers = 20,
     batches_per_epoch = 1000,
     batches_per_eval = 200,
-    n_epochs = 200,
+    n_epochs = 250,
     change_loss={20: {"trg_fuzz": 1.0, "factor": 10.},
                  50: {"trg_fuzz": 0.0, "factor": 0.},
                 },

@@ -80,15 +80,15 @@ data_pars = dict(
     mas_spec_norm = 64., # Normalization factor for MAS spectra
     wr_norm_factor = 100_000.,
     wr_inv = False, # Encode inverse of MAS rate instead of MAS rate
-    gen_mas_shifts = False,
+    gen_mas_shifts = True,
 )
 
 model_pars = dict(
     input_dim = 2,
     n_models = 4,
-    hidden_dim = [32, 32, 32, 32],
-    kernel_size = [5, 5, 5, 5],
-    num_layers = 4,
+    hidden_dim = [32, 32, 32, 32, 32, 32],
+    kernel_size = [5, 5, 5, 5, 5, 5],
+    num_layers = 6,
     batch_input = 4,
     bias = True,
     output_bias = True,
@@ -124,7 +124,7 @@ train_pars = dict(
     change_loss={20: {"trg_fuzz": 1.0, "factor": 10.},
                  50: {"trg_fuzz": 0.0, "factor": 0.},
                 },
-    out_dir = "../../data/1D/PIPNet_2022_09_28_4_layers/",
+    out_dir = "../../data/1D/PIPNet_2022_10_03_mas_shifts/",
     device = device,
     monitor_end = "\n"
 )
@@ -133,7 +133,7 @@ dataset = data.Dataset(**data_pars)
 net = model.ConvLSTMEnsemble(**model_pars).to(device)
 loss = model.PIPLoss(**loss_pars)
 opt = torch.optim.Adam(net.parameters(), lr=1e-3)
-sch = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, factor=0.5, patience=10)
+sch = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, factor=0.5, patience=50)
 
 if train_pars["out_dir"] is not None and not os.path.exists(train_pars["out_dir"]):
     os.mkdir(train_pars["out_dir"])

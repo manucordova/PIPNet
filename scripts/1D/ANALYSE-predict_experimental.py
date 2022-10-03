@@ -36,7 +36,7 @@ np.random.seed(123)
 
 
 mod = sys.argv[1]
-epoch = 200
+epoch = 250
 
 in_dir = f"../../data/1D/{mod}/"
 fig_dir = f"../../figures/1D/{mod}/"

@@ -37,7 +37,7 @@ batch_size = 16
 n_batch = 64
 n_show = 64
 
-epoch = 200
+epoch = 250
 eval_all_steps = False
 
 eval_peaks = True
@@ -139,7 +139,7 @@ data_pars = dict(
     mas_spec_norm = 64., # Normalization factor for MAS spectra
     wr_norm_factor = 100_000.,
     wr_inv = False, # Encode inverse of MAS rate instead of MAS rate
-    gen_mas_shifts = True,
+    gen_mas_shifts = False,
 )
 
 loss_pars1 = dict(
