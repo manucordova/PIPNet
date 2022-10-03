@@ -84,7 +84,7 @@ data_pars = dict(
 )
 
 model_pars = dict(
-    input_dim = 2,
+    input_dim = 3,
     n_models = 4,
     hidden_dim = [32, 32, 32, 32, 32, 32],
     kernel_size = [5, 5, 5, 5, 5, 5],

@@ -118,6 +118,7 @@ class ConvLSTMCell(nn.Module):
                     kernel_size=self.kernel_size,
                     bias=self.bias,
                 )
+                self.pad = (self.padding, self.padding)
             elif ndim == 2:
                 self.conv = nn.Conv2d(
                     in_channels=self.input_dim + self.hidden_dim,
@@ -125,6 +126,7 @@ class ConvLSTMCell(nn.Module):
                     kernel_size=self.kernel_size,
                     bias=self.bias,
                 )
+                self.pad = (self.padding, self.padding, self.padding, self.padding)
 
         # Initialize batch normalization
         if self.batch_norm:
