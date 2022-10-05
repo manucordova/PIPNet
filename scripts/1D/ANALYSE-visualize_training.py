@@ -106,26 +106,15 @@ mas_pars = dict(
     debug = False,
 )
 
-data_pars = dict(
-    iso_pars = iso_pars,
-    mas_pars = mas_pars,
-    
-    positive_iso = True,
-    encode_imag = False, # Encode the imaginary part of the MAS spectra
-    encode_wr = True, # Encode the MAS rate of the spectra
+with open(f"{in_dir}data_pars.pk", "rb") as F:
+    data_pars = pk.load(F)
 
-    # noise parameters
-    noise = 0., # Noise level
-    mas_l_noise = 0.05,
-    mas_s_noise = 25.,
-    
-    smooth_end_len = 10, # Smooth ends of spectra
-    iso_spec_norm = 256., # Normalization factor for peaks
-    mas_spec_norm = 64., # Normalization factor for MAS spectra
-    wr_norm_factor = 100_000.,
-    wr_inv = False, # Encode inverse of MAS rate instead of MAS rate
-    gen_mas_shifts = False,
-)
+data_pars["iso_pars"] = iso_pars
+data_pars["mas_pars"] = mas_pars
+data_pars["noise"] = 0.
+data_pars["mas_l_noise"] = 0.05
+data_pars["mas_s_noise"] = 25.
+data_pars["gen_mas_shifts"] = False
 
 loss_pars1 = dict(
     trg_fuzz = 0.,
