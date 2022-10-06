@@ -1406,6 +1406,9 @@ if eval_constant:
     for i in range(X.shape[1]):
         X[:, i, 0] = X[:, -1, 0]
     
+    y = y.to(device)
+    X = X.to(device)
+    
     # Make predictions
     with torch.no_grad():
         y_pred, y_std, ys_pred = net(X)
@@ -1415,6 +1418,12 @@ if eval_constant:
             y = y.repeat((1, y_pred.shape[1], 1))
         elif net.ndim == 2:
             y = y.repeat((1, y_pred.shape[1], 1, 1))
+    
+    X = X.cpu()
+    y = y.cpu()
+    y_pred = y_pred.cpu()
+    y_std = y_std.cpu()
+    ys_pred = ys_pred.cpu()
 
     for ishow in range(n_show):
         utils.plot_iso_prediction(

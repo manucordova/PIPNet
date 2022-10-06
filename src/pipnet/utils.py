@@ -135,7 +135,7 @@ def extract_1d_dataset(path, exp_init, exp_final, exps=None):
 
 
 
-def prepare_input(xr, ws, data_pars, xi=None, xmax=0.5):
+def prepare_1d_input(xr, ws, data_pars, xi=None, xmax=0.5):
 
     X = torch.Tensor(xr).unsqueeze(0).unsqueeze(2)
 
@@ -161,7 +161,7 @@ def prepare_input(xr, ws, data_pars, xi=None, xmax=0.5):
 
 
 
-def plot_iso_prediction(
+def plot_1d_iso_prediction(
     X,
     y_pred,
     y_std,
@@ -251,7 +251,7 @@ def plot_iso_prediction(
 
 
 
-def extract_linewidth(x, y, x_range, verbose=False):
+def extract_1d_linewidth(x, y, x_range, verbose=False):
     """
     Extract the linewidth (FWHM) of a peak in the given x-axis range
 
@@ -304,19 +304,19 @@ def extract_linewidth(x, y, x_range, verbose=False):
 
 
 
-def extract_linewidths(x, y, x_ranges):
+def extract_1d_linewidths(x, y, x_ranges):
 
     lws = np.zeros(len(x_ranges))
     pks = np.zeros(len(x_ranges))
 
     for i, x_range in enumerate(x_ranges):
-        lws[i], pks[i] = extract_linewidth(x, y, x_range)
+        lws[i], pks[i] = extract_1d_linewidth(x, y, x_range)
 
     return lws, pks
 
 
 
-def get_relative_integrals(x, y, regions):
+def get_relative_1d_integrals(x, y, regions):
     """
     Compare the relative integrals in different regions of two spectra
 
