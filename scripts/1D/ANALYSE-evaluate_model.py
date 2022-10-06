@@ -405,7 +405,7 @@ int_maes = []
 iso_mses = []
 cos_sims = []
 
-if eval_peaks:
+if eval_wr:
     
     for wr in wrs:
         
@@ -442,8 +442,8 @@ if eval_peaks:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
-            Xi.to(device)
-            yi.to(device)
+            Xi = Xi.to(device)
+            yi = yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
@@ -560,8 +560,8 @@ if eval_mas_high:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
-            Xi.to(device)
-            yi.to(device)
+            Xi = Xi.to(device)
+            yi = yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
@@ -672,8 +672,8 @@ if eval_mas_high:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
-            Xi.to(device)
-            yi.to(device)
+            Xi = Xi.to(device)
+            yi = yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
@@ -788,8 +788,8 @@ if eval_mas_low:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
-            Xi.to(device)
-            yi.to(device)
+            Xi = Xi.to(device)
+            yi = yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
@@ -900,8 +900,8 @@ if eval_mas_low:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
-            Xi.to(device)
-            yi.to(device)
+            Xi = Xi.to(device)
+            yi = yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
@@ -1009,8 +1009,8 @@ if eval_nw:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
-            Xi.to(device)
-            yi.to(device)
+            Xi = Xi.to(device)
+            yi = yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
@@ -1118,8 +1118,8 @@ if eval_noise:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
-            Xi.to(device)
-            yi.to(device)
+            Xi = Xi.to(device)
+            yi = yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
@@ -1233,8 +1233,8 @@ if eval_shift:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
-            Xi.to(device)
-            yi.to(device)
+            Xi = Xi.to(device)
+            yi = yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
@@ -1338,8 +1338,8 @@ if eval_constant:
     for ibatch in range(n_batch):
         # Generate dataset
         Xi, yi = dataset.generate_batch(size=batch_size)
-        Xi.to(device)
-        yi.to(device)
+        Xi = Xi.to(device)
+        yi = yi.to(device)
 
         print(f"  Batch {ibatch + 1}/{n_batch}")
 
@@ -1498,8 +1498,8 @@ if eval_shift_noise:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
-            Xi.to(device)
-            yi.to(device)
+            Xi = Xi.to(device)
+            yi = yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
@@ -1608,8 +1608,8 @@ if eval_lw_noise:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
-            Xi.to(device)
-            yi.to(device)
+            Xi = Xi.to(device)
+            yi = yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
