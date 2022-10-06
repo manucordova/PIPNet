@@ -293,7 +293,7 @@ int_maes = []
 iso_mses = []
 cos_sims = []
 
-if eval_wr:
+if eval_peaks:
     
     for peaks in n_peaks:
         
