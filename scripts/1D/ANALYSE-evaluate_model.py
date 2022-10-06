@@ -184,9 +184,9 @@ with open(in_dir + "model_pars.pk", "rb") as F:
 model_pars["noise"] = 0.
 model_pars["return_all_layers"] = eval_all_steps
 
-net = model.ConvLSTMEnsemble(**model_pars)
+net = model.ConvLSTMEnsemble(**model_pars).to(device)
 net.load_state_dict(torch.load(in_dir + f"epoch_{epoch}_network", map_location=device))
-net = net.eval().to(device)
+net = net.eval()
 
 
 # In[7]:
@@ -321,6 +321,10 @@ if eval_wr:
             Xi, yi = dataset.generate_batch(size=batch_size)
             Xi.to(device)
             yi.to(device)
+
+            print(Xi.device)
+            print(yi.device)
+            print(net.device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
