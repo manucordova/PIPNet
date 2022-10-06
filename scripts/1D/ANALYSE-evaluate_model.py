@@ -184,7 +184,7 @@ with open(in_dir + "model_pars.pk", "rb") as F:
 model_pars["noise"] = 0.
 model_pars["return_all_layers"] = eval_all_steps
 
-net = model.ConvLSTMEnsemble(**model_pars)
+net = model.ConvLSTMEnsemble(**model_pars).to(device)
 net.load_state_dict(torch.load(in_dir + f"epoch_{epoch}_network", map_location=device))
 net = net.eval()
 
@@ -319,6 +319,8 @@ if eval_wr:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
+            Xi.to(device)
+            yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
@@ -440,6 +442,8 @@ if eval_peaks:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
+            Xi.to(device)
+            yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
@@ -556,6 +560,8 @@ if eval_mas_high:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
+            Xi.to(device)
+            yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
@@ -666,6 +672,8 @@ if eval_mas_high:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
+            Xi.to(device)
+            yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
@@ -780,6 +788,8 @@ if eval_mas_low:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
+            Xi.to(device)
+            yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
@@ -890,6 +900,8 @@ if eval_mas_low:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
+            Xi.to(device)
+            yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
@@ -997,6 +1009,8 @@ if eval_nw:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
+            Xi.to(device)
+            yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
@@ -1104,6 +1118,8 @@ if eval_noise:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
+            Xi.to(device)
+            yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
@@ -1217,6 +1233,8 @@ if eval_shift:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
+            Xi.to(device)
+            yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
@@ -1320,6 +1338,8 @@ if eval_constant:
     for ibatch in range(n_batch):
         # Generate dataset
         Xi, yi = dataset.generate_batch(size=batch_size)
+        Xi.to(device)
+        yi.to(device)
 
         print(f"  Batch {ibatch + 1}/{n_batch}")
 
@@ -1478,6 +1498,8 @@ if eval_shift_noise:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
+            Xi.to(device)
+            yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
@@ -1586,6 +1608,8 @@ if eval_lw_noise:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
+            Xi.to(device)
+            yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
