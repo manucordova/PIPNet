@@ -184,9 +184,9 @@ with open(in_dir + "model_pars.pk", "rb") as F:
 model_pars["noise"] = 0.
 model_pars["return_all_layers"] = eval_all_steps
 
-net = model.ConvLSTMEnsemble(**model_pars).to(device)
+net = model.ConvLSTMEnsemble(**model_pars)
 net.load_state_dict(torch.load(in_dir + f"epoch_{epoch}_network", map_location=device))
-net = net.eval()
+net = net.eval().to(device)
 
 
 # In[7]:
