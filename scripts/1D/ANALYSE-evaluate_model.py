@@ -319,12 +319,8 @@ if eval_wr:
         for ibatch in range(n_batch):
             # Generate dataset
             Xi, yi = dataset.generate_batch(size=batch_size)
-            Xi.to(device)
-            yi.to(device)
-
-            print(Xi.device)
-            print(yi.device)
-            print(net.device)
+            Xi = Xi.to(device)
+            yi = yi.to(device)
             
             print(f"  Batch {ibatch + 1}/{n_batch}")
 
