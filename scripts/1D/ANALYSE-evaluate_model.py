@@ -347,7 +347,7 @@ if eval_peaks:
         ys_pred = torch.cat(ys_pred, dim=1).cpu()
 
         for ishow in range(n_show):
-            utils.plot_iso_prediction(
+            utils.plot_1d_iso_prediction(
                 X[ishow],
                 y_pred[ishow],
                 y_std[ishow],
@@ -470,7 +470,7 @@ if eval_wr:
         ys_pred = torch.cat(ys_pred, dim=1).cpu()
         
         for ishow in range(n_show):
-            utils.plot_iso_prediction(
+            utils.plot_1d_iso_prediction(
                 X[ishow],
                 y_pred[ishow],
                 y_std[ishow],
@@ -588,7 +588,7 @@ if eval_mas_high:
         ys_pred = torch.cat(ys_pred, dim=1).cpu()
         
         for ishow in range(n_show):
-            utils.plot_iso_prediction(
+            utils.plot_1d_iso_prediction(
                 X[ishow],
                 y_pred[ishow],
                 y_std[ishow],
@@ -700,7 +700,7 @@ if eval_mas_high:
         ys_pred = torch.cat(ys_pred, dim=1).cpu()
         
         for ishow in range(n_show):
-            utils.plot_iso_prediction(
+            utils.plot_1d_iso_prediction(
                 X[ishow],
                 y_pred[ishow],
                 y_std[ishow],
@@ -816,7 +816,7 @@ if eval_mas_low:
         ys_pred = torch.cat(ys_pred, dim=1).cpu()
         
         for ishow in range(n_show):
-            utils.plot_iso_prediction(
+            utils.plot_1d_iso_prediction(
                 X[ishow],
                 y_pred[ishow],
                 y_std[ishow],
@@ -928,7 +928,7 @@ if eval_mas_low:
         ys_pred = torch.cat(ys_pred, dim=1).cpu()
         
         for ishow in range(n_show):
-            utils.plot_iso_prediction(
+            utils.plot_1d_iso_prediction(
                 X[ishow],
                 y_pred[ishow],
                 y_std[ishow],
@@ -1037,7 +1037,7 @@ if eval_nw:
         ys_pred = torch.cat(ys_pred, dim=1).cpu()
         
         for ishow in range(n_show):
-            utils.plot_iso_prediction(
+            utils.plot_1d_iso_prediction(
                 X[ishow],
                 y_pred[ishow],
                 y_std[ishow],
@@ -1146,7 +1146,7 @@ if eval_noise:
         ys_pred = torch.cat(ys_pred, dim=1).cpu()
         
         for ishow in range(n_show):
-            utils.plot_iso_prediction(
+            utils.plot_1d_iso_prediction(
                 X[ishow],
                 y_pred[ishow],
                 y_std[ishow],
@@ -1261,7 +1261,7 @@ if eval_shift:
         ys_pred = torch.cat(ys_pred, dim=1).cpu()
         
         for ishow in range(n_show):
-            utils.plot_iso_prediction(
+            utils.plot_1d_iso_prediction(
                 X[ishow],
                 y_pred[ishow],
                 y_std[ishow],
@@ -1366,7 +1366,7 @@ if eval_constant:
     ys_pred = torch.cat(ys_pred, dim=1).cpu()
 
     for ishow in range(n_show):
-        utils.plot_iso_prediction(
+        utils.plot_1d_iso_prediction(
             X[ishow],
             y_pred[ishow],
             y_std[ishow],
@@ -1426,7 +1426,7 @@ if eval_constant:
     ys_pred = ys_pred.cpu()
 
     for ishow in range(n_show):
-        utils.plot_iso_prediction(
+        utils.plot_1d_iso_prediction(
             X[ishow],
             y_pred[ishow],
             y_std[ishow],
@@ -1535,7 +1535,7 @@ if eval_shift_noise:
         ys_pred = torch.cat(ys_pred, dim=1).cpu()
         
         for ishow in range(n_show):
-            utils.plot_iso_prediction(
+            utils.plot_1d_iso_prediction(
                 X[ishow],
                 y_pred[ishow],
                 y_std[ishow],
@@ -1645,7 +1645,7 @@ if eval_lw_noise:
         ys_pred = torch.cat(ys_pred, dim=1).cpu()
         
         for ishow in range(n_show):
-            utils.plot_iso_prediction(
+            utils.plot_1d_iso_prediction(
                 X[ishow],
                 y_pred[ishow],
                 y_std[ishow],
