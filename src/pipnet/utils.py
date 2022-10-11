@@ -251,6 +251,50 @@ def plot_1d_iso_prediction(
 
 
 
+def plot_1d_dataset(
+    X,
+    y=None,
+    y_scale=1.,
+    offset=0.,
+    y_offset=0.,
+    xvals=None,
+    xinv=False,
+    c0=np.array([0., 1., 1.]),
+    dc=np.array([0., -1., 0.]),
+    ylim=None,
+    show=True,
+    save=None,
+):
+
+    if xvals is None:
+        xvals = np.arange(X.shape[-1])
+
+    fig = plt.figure(figsize=(4,3))
+    ax = fig.add_subplot(1,1,1)
+
+    n = X.shape[0]
+
+    for i, Xi in enumerate(X):
+        ax.plot(xvals, Xi[0] + offset * i, linewidth=1., color=c0+(i/(n-1))*dc)
+    
+    if y is not None:
+        ax.plot(xvals, y[0]* y_scale + y_offset, linewidth=1., color="r")
+
+    if xinv:
+        ax.invert_xaxis()
+    if ylim is not None:
+        ax.set_ylim(ylim)
+    fig.tight_layout()
+    if show:
+        plt.show()
+    if save is not None:
+        fig.savefig(save)
+    plt.close()
+
+    return
+
+
+
 def extract_1d_linewidth(x, y, x_range, verbose=False):
     """
     Extract the linewidth (FWHM) of a peak in the given x-axis range
