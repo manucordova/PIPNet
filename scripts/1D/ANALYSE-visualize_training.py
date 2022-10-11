@@ -551,7 +551,7 @@ if eval_history:
                 y_std = np.load(in_dir + f"epoch_{i+1}_std.npy")
                 
                 for isample in range(X.shape[0]):
-                    utils.plot_iso_prediction(
+                    utils.plot_1d_iso_prediction(
                         X[isample],
                         y_pred[isample],
                         y_std[isample],
@@ -609,7 +609,7 @@ if eval_evolution:
                 y_trg = y.repeat(1, y_pred.shape[1], 1).numpy()
                     
                 for isample in range(X.shape[0]):
-                    utils.plot_iso_prediction(
+                    utils.plot_1d_iso_prediction(
                         X[isample],
                         y_pred[isample],
                         y_std[isample],
