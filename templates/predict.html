@@ -1,0 +1,86 @@
+{% extends "layout.html" %}
+
+{% block content %}
+  <h1>Predict a PIP spectrum</h1>
+
+  <h2>Upload your dataset</h2>
+
+  <form enctype="multipart/form-data" id="upload">
+    <div class="upload_form">
+      <input type="file" multiple ref="fileInput" name="dataset" id="dataset"></input>
+      <div>
+        <br>Upload your zipped Topspin dataset here<br>(drag & drop or click to browse)
+      </div>
+    </div>
+  </form>
+
+  <div class="hide" id="onupload">
+    <h2 class="in-hiding">Uploading data...</h2>
+    <div class="lds-dual-ring in-hiding"></div>
+  </div>
+
+  <form class="hide" id="preprocess">
+
+    <h2>Select included spectra, chemical shift range and MAS rates</h2>
+
+    <div class="parameters">
+      <label for="rangel">Prediction chemical shift range</label>
+      <input type="number" class="numbers" id="rangel" value="20" onchange="change_spectrum(0);">
+      <span> - </span>
+      <input type="number" class="numbers" id="ranger" value="-5" onchange="change_spectrum(0);">
+      <span> ppm </span>
+      <br>
+      <label for="mas-rangel">Prediction MAS rate range</label>
+      <input type="number" class="numbers" id="mas-rangel" value="20" min="0" onchange="update_sel_mas();">
+      <span> - </span>
+      <input type="number" class="numbers" id="mas-ranger" value="100" min="0" onchange="update_sel_mas();">
+      <span> kHz </span>
+      <br>
+      <label for="sens">Prediction sensitivity (recommended value: 1)</label>
+      <input type="range" id="sens" value="1" min="0" max="10" step="0.1" oninput="this.nextElementSibling.value = this.value;">
+      <input type="number" class="numbers" value="1" min="0" max="10" onchange="this.previousElementSibling.value = this.value;">
+    </div>
+
+    <div class="spectra" id="spectra">
+      <a class="prev" onclick="change_spectrum(-1);">&#10094;</a>
+      <a class="next" onclick="change_spectrum(1);">&#10095;</a>
+    </div>
+
+    <div class="goto">
+      <input type="button" id="predict" value="Predict" onclick="run_prediction();"></input>
+    </div>
+
+  </form>
+
+  <div class="hide" id="onpredict">
+    <h2 class="in-hiding">Predicting PIP spectrum...</h2>
+    <div class="lds-dual-ring in-hiding"></div>
+  </div>
+
+  <div class="hide" id="preds">
+    <h2>PIPNet predictions</h2>
+    <div class="preds">
+      <div class="spectrum_fig" id="final-pred"></div>
+      <div class="spectrum_fig" id="final-pred-all-specs"></div>
+      <div class="evolving-pred">
+        <a class="prev" onclick="change_pred(-1);">&#10094;</a>
+        <a class="next" onclick="change_pred(1);">&#10095;</a>
+        <div class="spectrum_fig" id="evolving-pred"></div>
+      </div>
+    </div>
+    <div class="goto">
+      <a id="download" class="goto-button">Download predictions</a>
+    </div>
+  </div>
+
+  <div class="hide" id="errormsg"></div>
+
+
+{% endblock content %}
+
+{% block scripts %}
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+  <script type="text/javascript" src="{{ url_for('static', filename='scripts/predict.js') }}"></script>
+
+{% endblock scripts %}

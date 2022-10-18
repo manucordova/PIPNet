@@ -5,4 +5,7 @@ torch
 torchvision
 torchaudio
 matplotlib
+pandas
+plotly
+flask
 setuptools

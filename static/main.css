@@ -1,0 +1,412 @@
+body {
+  background-color: #FFFFFF;
+  font-family: arial;
+  max-width: 2000px;
+  min-width: 600px;
+  align-content: center;
+  text-align: justify;
+  font-size: 18px;
+}
+
+header {
+  position: fixed;
+  z-index: 10;
+  top: 0px;
+  left: 0px;
+  height: 100px;
+  right: 0px;
+  overflow: hidden;
+  background-color: #EEEEEE;
+  border-bottom: 2px solid #AAAAAA;
+  border-radius: 20px;
+  padding-left: 5%;
+}
+
+header .header-button {
+  color: #000000;
+  text-transform: uppercase;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 18px;
+  width: 150px;
+  height: 100px;
+  line-height: 100px;
+  text-align: center;
+  float: left;
+  display: block;
+  margin-top: 0px;
+}
+
+header .header-button.active {
+  background-color: #DDDDDD;
+  color: #EE0000;
+}
+
+header .header-button:hover {
+  color: #999999;
+}
+header .icon {
+  display: none;
+}
+
+main {
+  margin-top: 120px;
+  margin-left: 5%;
+  width: 90%;
+}
+
+h1 {
+  text-align: left;
+}
+
+p {
+  font-size: 18px;
+}
+
+.goto {
+  text-decoration: none;
+  height: auto;
+  text-align: center;
+  margin: 50px 50px;
+}
+
+.goto .goto-button {
+  background-color: #EEE;
+  border: 2px solid #EEE;
+  border-radius: 5px;
+  font-size: 18px;
+  color: black;
+  padding: 16px 32px;
+  text-decoration: none;
+  margin: 0 50px;
+  cursor: pointer;
+}
+
+.goto .goto-button:hover {
+  background-color: #FFF;
+}
+
+.upload_form {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  border: 3px dashed grey;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.upload_form div {
+  width: 100%;
+  height: 100%;
+  line-height: 50px;
+  text-align: center;
+  color: #AAAAAA;
+  position: absolute;
+  top: 0;
+  z-index: -1;
+}
+
+.upload_form #fileName {
+  text-align: center;
+  position: absolute;
+  top: 0;
+}
+
+.upload_form input{
+  cursor: pointer;
+  position: relative;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  opacity: 0;
+}
+
+/* The snackbar - position it at the bottom and in the middle of the screen */
+#snackbar {
+  visibility: hidden; /* Hidden by default. Visible on click */
+  min-width: 250px; /* Set a default minimum width */
+  margin-left: -125px; /* Divide value of min-width by 2 */
+  background-color: #333; /* Black background color */
+  color: #fff; /* White text color */
+  text-align: center; /* Centered text */
+  border-radius: 2px; /* Rounded borders */
+  padding: 16px; /* Padding */
+  position: fixed; /* Sit on top of the screen */
+  z-index: 1; /* Add a z-index if needed */
+  left: 50%; /* Center the snackbar */
+  bottom: 30px; /* 30px from the bottom */
+}
+
+/* Show the snackbar when clicking on a button (class added with JavaScript) */
+#snackbar.show {
+  visibility: visible; /* Show the snackbar */
+  /* Add animation: Take 0.5 seconds to fade in and out the snackbar.
+  However, delay the fade out process for 2.5 seconds */
+  -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
+  animation: fadein 0.5s, fadeout 0.5s 2.5s;
+}
+
+/* Animations to fade the snackbar in and out */
+@-webkit-keyframes fadein {
+  from {opacity: 0;}
+  to {opacity: 1;}
+}
+
+@keyframes fadein {
+  from {opacity: 0;}
+  to {opacity: 1;}
+}
+
+@-webkit-keyframes fadeout {
+  from {opacity: 1;}
+  to {opacity: 0;}
+}
+
+@keyframes fadeout {
+  from {opacity: 1;}
+  to {opacity: 0;}
+}
+
+.hide {
+  visibility: hidden;
+  opacity: 0;
+  max-height: 0;
+
+  transition: visibility 0s 0.5s, opacity 0.5s linear;
+}
+
+.appear {
+  visibility: visible; /* Show the snackbar */
+  opacity: 1;
+  /* Add animation: Take 0.5 seconds to fade in and out the snackbar.
+  However, delay the fade out process for 2.5 seconds */
+  transition: opacity 0.5s linear;
+}
+
+#onupload, #onpredict {
+  text-align: center;
+}
+
+.spectra {
+  position: relative;
+  text-align: center;
+  width: 100%;
+  margin: 10px 0;
+  border: 3px solid #DDD;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.spectrum {
+  display: none;
+  width: 100%;
+  overflow:hidden;
+}
+
+.spectrum .active {
+  background-color: #FFF;
+}
+
+.spectrum_fig {
+  width: 500px;
+  height: 400px;
+  text-align: center;
+  position: relative;
+  display: inline-block;
+  border: 2px solid #EEE;
+  padding: 5px;
+  margin: 5px;
+  border-radius: 10px;
+  vertical-align: top;
+}
+
+.spectrum_title {
+  margin: 5px;
+  padding: 10px;
+  display: inline-block;
+  background-color: #EEE;
+  border-radius: 10px;
+  min-height: 400px;
+  vertical-align: top;
+  transition: 0.2s ease;
+}
+
+.spectrum_params {
+  display: inline-block;
+  margin: 5px;
+  padding: 10px;
+  background-color: #EEE;
+  border-radius: 10px;
+  text-align: center;
+  min-height: 400px;
+  vertical-align: top;
+  transition: 0.2s ease;
+  line-height: 50px;
+}
+
+.mas_rate {
+  display: inline-block;
+}
+
+input[type="checkbox"] {
+  transform: scale(1.5);
+  left: 50px;
+  top: 50px;
+}
+
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+input[type=button] {
+  background-color: #EEE;
+  border: 2px solid #EEE;
+  border-radius: 5px;
+  font-size: 18px;
+  color: black;
+  padding: 16px 32px;
+  text-decoration: none;
+  margin: 4px 2px;
+  cursor: pointer;
+}
+
+input[type=button]:hover {
+  background-color: #FFF;
+}
+
+.parameters {
+  width: 100%;
+  border: 3px solid #DDD;
+  border-radius: 10px;
+  line-height: 50px;
+  display: inline-block;
+  text-align: center;
+}
+
+.parameters .numbers {
+  text-align: center;
+  font-size: 16;
+  background-color: #FFF;
+  width: 50px;
+}
+
+.preds {
+  position: relative;
+  text-align: center;
+  border: 3px solid #DDD;
+  border-radius: 10px;
+}
+
+.evolving-pred {
+  display: inline-block;
+  vertical-align: top;
+  position: relative;
+  text-align: center;
+  border: 2px solid #EEE;
+  border-radius: 5px;
+  padding: 5px;
+  margin: 5px;
+  width: 500px;
+}
+
+.evolving-pred .spectrum_fig {
+  border: 0px;
+  padding: 0px;
+  margin: 0px;
+  width: 450px;
+}
+
+.masr {
+  text-align: center;
+  font-size: 16;
+  background-color: #EEE;
+  width: inherit;
+}
+
+.prev, .next {
+  margin: 0;
+  cursor: pointer;
+  text-align: center;
+  line-height: 50px;
+  position: absolute;
+  top: 170px;
+  width: 25px;
+  height: 50px;
+  color: #666;
+  font-weight: bold;
+  font-size: 18px;
+  transition: 0.6s ease;
+  border-radius: 5px;
+  user-select: none;
+  z-index: 1;
+}
+
+.prev {
+  left: 0;
+}
+
+.next {
+  right: 0;
+}
+
+.prev:hover, .next:hover {
+  background-color: rgba(0,0,0,0.1);
+}
+
+.numbertext {
+  position: absolute;
+  text-align: right;
+  width: 150px;
+  left: 350px;
+  top: 30px;
+  z-index: 2;
+}
+
+.lds-dual-ring {
+  display: inline-block;
+  width: 80px;
+  height: 80px;
+}
+
+.lds-dual-ring:after {
+  content: " ";
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin: 8px;
+  border-radius: 50%;
+  border: 6px solid #AAA;
+  border-color: #AAA transparent #AAA transparent;
+  animation: lds-dual-ring 1.2s linear infinite;
+}
+
+#errormsg {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  margin-top: -50px;
+  margin-left: -250px;
+  width: 500px;
+  min-height: 100px;
+  text-align: center;
+  background-color: #AAA;
+  border-radius: 20px;
+  color: #F00;
+  padding: 20px;
+}
+
+@keyframes lds-dual-ring {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

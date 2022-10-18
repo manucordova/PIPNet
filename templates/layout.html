@@ -1,0 +1,48 @@
+<! doctype html>
+
+<html>
+  <head>
+      <title>PIPNet</title>
+
+      <!-- Required meta tags -->
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+
+      <link rel="stylesheet" type="text/css" href="./static/main.css">
+
+      <script type="text/javascript" src="{{ url_for('static', filename='scripts/main.js') }}"></script>
+      <script src="{{ url_for('static', filename='scripts/jquery-3.6.0.min.js') }}"></script>
+
+  </head>
+
+  <body onload="highlight_navbar()">
+
+    <!-- Navigation bar -->
+    <header>
+      <a href="/" class="header-button" id="nav-home">
+        Home
+      </a>
+      <a href="/predict" class="header-button" id="nav-predict">
+        Predict
+      </a>
+      <a href="/examples" class="header-button" id="nav-examples">
+        Examples
+      </a>
+      <a href="/about" class="header-button", id="nav-about">
+        About
+      </a>
+      <a href="/contact" class="header-button", id="nav-contact">
+        Contact
+      </a>
+    </header>
+
+    <main role="main" class="container">
+
+      {% block content %}{% endblock %}
+
+    </main>
+
+    {% block scripts %}{% endblock %}
+
+  </body>
+</html>

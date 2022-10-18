@@ -5,6 +5,7 @@
 ###                       Last edited: 2022-09-30                       ###
 ###########################################################################
 
+from re import I
 import numpy as np
 import os
 import matplotlib.pyplot as plt
@@ -13,20 +14,21 @@ import scipy as sp
 
 
 
-def load_1d_topspin_spectrum(path):
+def load_1d_topspin_spectrum(path, return_title=False):
     """
     Load a 1D spectrum from Topspin and retrieve the MAS rate
     The MAS rate is first looked for in the title of the experiment,
     and if it is not found there the MASR variable in the acquisition
     parameters will be searched.
 
-    Input:      - path  Path to the Topspin directory
+    Input:      - path          Path to the Topspin directory
+                - return_title  Return the title of the spectrum
 
-    Outputs:    - dr    Real part of the spectrum
-                - di    Imaginary part of the spectrum
-                - wr    MAS rate (-1 if the rate is not found)
-                - ppm   Array of chemical shift values in the spectrum
-                - hz    Array of frequency values in the spectrum
+    Outputs:    - dr            Real part of the spectrum
+                - di            Imaginary part of the spectrum
+                - wr            MAS rate (-1 if the rate is not found)
+                - ppm           Array of chemical shift values in the spectrum
+                - hz            Array of frequency values in the spectrum
     """
     
     if not path.endswith("/"):
@@ -47,7 +49,8 @@ def load_1d_topspin_spectrum(path):
     # Get MAS rate from title
     wr_found = False
     with open(ti, "r") as F:
-        lines = F.read().split("\n")
+        title = F.read()
+        lines = title.split("\n")
     for l in lines:
         if "KHZ" in l.upper():
             wr = float(l.upper().split("KHZ")[0].split()[-1]) * 1000
@@ -87,11 +90,14 @@ def load_1d_topspin_spectrum(path):
     hz = offset * SF - np.arange(n_pts) / (2 * AQ * n_pts / TD)
     ppm = hz / SF
 
-    return dr, di, wr, ppm, hz
+    if return_title:
+        return dr, di, wr, ppm, hz, title
+    else:
+        return dr, di, wr, ppm, hz
 
 
 
-def extract_1d_dataset(path, exp_init, exp_final, exps=None):
+def extract_1d_dataset(path, exp_init, exp_final, exps=None, return_titles=False):
     """
     Extract a vmas dataset of 1D spectra
 
@@ -99,6 +105,7 @@ def extract_1d_dataset(path, exp_init, exp_final, exps=None):
                 - exp_init          Index of the first experiment (inclusive)
                 - exp_final         Index of the last experiment (inclusive)
                 - exps              Custom indices of all experiments
+                - return_titles     Return spectra titles
 
     Outputs:    - ppm               Array of chemical shifts
                 - hz                Array of frequencies
@@ -113,13 +120,18 @@ def extract_1d_dataset(path, exp_init, exp_final, exps=None):
     ws = []
     X_real = []
     X_imag = []
+    titles = []
 
     if exps is None:
         exps = np.arange(exp_init, exp_final+1)
     
     for d in os.listdir(path):
         if d.isnumeric() and int(d) in exps:
-            Xr, Xi, wr, ppm, hz = load_1d_topspin_spectrum(f"{path}{d}/")
+            if return_titles:
+                Xr, Xi, wr, ppm, hz, title = load_1d_topspin_spectrum(f"{path}{d}/", return_title=True)
+                titles.append(title)
+            else:
+                Xr, Xi, wr, ppm, hz = load_1d_topspin_spectrum(f"{path}{d}/")
             X_real.append(Xr)
             X_imag.append(Xi)
             ws.append(wr)
@@ -131,7 +143,11 @@ def extract_1d_dataset(path, exp_init, exp_final, exps=None):
     sorted_X_real = np.array([X_real[i] for i in sorted_inds])
     sorted_X_imag = np.array([X_imag[i] for i in sorted_inds])
     
-    return ppm, hz, sorted_ws, sorted_X_real, sorted_X_imag
+    if return_titles:
+        sorted_titles = [titles[i] for i in sorted_inds]
+        return ppm, hz, sorted_ws, sorted_X_real, sorted_X_imag, sorted_titles
+    else:
+        return ppm, hz, sorted_ws, sorted_X_real, sorted_X_imag
 
 
 
@@ -312,7 +328,6 @@ def extract_1d_linewidth(x, y, x_range, verbose=False):
 
     # Select range and identify top of the peak
     inds = np.where(np.logical_and(x >= xmin, x <= xmax))[0]
-    dx = np.mean(x[1:] - x[:-1])
     top = np.max(y[inds])
     x0 = x[inds[np.argmax(y[inds])]]
     
@@ -323,12 +338,14 @@ def extract_1d_linewidth(x, y, x_range, verbose=False):
     for i, j in zip(inds[:-1], inds[1:]):
         # Crossing on the right
         if y[i] > top / 2 and y[j] < top / 2:
+            dx = x[j] - x[i]
             dy = y[j] - y[i]
             dy2 = (top / 2) - y[i]
             xr = x[i] + dx * dy2 / dy
             
         # Crossing on the left
         if y[i] < top / 2 and y[j] > top / 2:
+            dx = x[j] - x[i]
             dy = y[j] - y[i]
             dy2 = (top / 2) - y[i]
             xl = x[i] + dx * dy2 / dy

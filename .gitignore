@@ -142,3 +142,4 @@ gradio_queue*
 *.zip
 data/
 figures/
+tmp/

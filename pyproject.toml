@@ -13,8 +13,11 @@ dependencies = [
     "torch",
     "torchvision",
     "torchaudio",
-    "matplotlib"
+    "matplotlib",
+    "pandas",
+    "plotly",
+    "flask"
 ]
 
 [build-system]
-requires = ["numpy", "scipy", "torch", "torchvision", "torchaudio", "matplotlib", "setuptools", "wheel"]
+requires = ["numpy", "scipy", "torch", "torchvision", "torchaudio", "matplotlib", "pandas", "plotly", "flask", "setuptools", "wheel"]
