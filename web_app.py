@@ -27,7 +27,7 @@ torch.set_num_threads(os.cpu_count())
 model_name = "final_model_mixed"
 epoch = 250
 device = "cuda" if torch.cuda.is_available() else "cpu"
-debug = True
+debug = False
 
 # Initialize the Flask app
 app = flk.Flask(__name__)
@@ -87,8 +87,10 @@ def upload_dataset():
             # Extract spectra from directory
             ppm, _, ws, xrs, xis, titles = utils.extract_1d_dataset(dataset.split(".zip")[0] + "/", 1, 1000, return_titles=True)
 
-            print(titles)
-            print(ws)
+            # Normalize spectra for visualization
+            norm = np.sum(xrs, axis=1)
+            xrs /= norm[:, np.newaxis]
+            xis /= norm[:, np.newaxis]
 
             spectra = []
             for i, (w, xr, xi, title) in enumerate(zip(ws, xrs, xis, titles)):
@@ -152,9 +154,6 @@ def run_prediction():
 
     # Perform prediction
     X = utils.prepare_1d_input(xr, ws, data_pars=data_pars, xi=xi, xmax=sens/2.)
-    print(X.shape)
-    print(torch.sum(X[0, :, 0, :], dim=1))
-    print(torch.max(X[0, :, 0, :], dim=1))
     with torch.no_grad():
         y_pred, y_std, ys = net(X)
     y_pred = y_pred[0].numpy()
@@ -189,4 +188,4 @@ def contact():
 
 
 if __name__ == "__main__":
-    app.run(debug=debug)
+    app.run(host="0.0.0.0", port=8008, debug=debug)
