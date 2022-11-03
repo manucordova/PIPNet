@@ -192,8 +192,6 @@ def plot_1d_iso_prediction(
     x_trg=None,
     wr_factor=1.,
     xinv=False,
-    c0=np.array([0., 1., 1.]),
-    dc=np.array([0., -1., 0.]),
     ylim=None,
     all_steps=False,
     show=True,
@@ -262,6 +260,57 @@ def plot_1d_iso_prediction(
                 tmp[-2] += f"_step_{nsteps-step}"
             fig.savefig(".".join(tmp))
         plt.close()
+
+    return
+
+
+
+def plot_multiple_1d_iso_predictions(
+    X,
+    y_pred,
+    y_std,
+    pred_scale=1.,
+    pred_offset=0.,
+    xvals=None,
+    x_trg=None,
+    xinv=False,
+    ylim=None,
+    show=True,
+    save=None,
+):
+
+    if xvals is None:
+        xvals = np.arange(X.shape[-1])
+    if x_trg is None:
+        x_trg = xvals
+    
+    nsteps = y_pred.shape[0]
+    fig = plt.figure(figsize=(4,3))
+    ax = fig.add_subplot(1,1,1)
+    ax.plot(xvals, X[-1, 0] + (nsteps * pred_offset), linewidth=1., zorder=0)
+    # Plot all prediction steps
+    for step in range(nsteps):
+        ax.plot(xvals, y_pred[-(step+1)] * pred_scale + pred_offset * step, "r", linewidth=1., zorder=-1)
+
+        ax.fill_between(
+            xvals,
+            (y_pred[-(step+1)] - y_std[-(step+1)]) * pred_scale + pred_offset * step,
+            (y_pred[-(step+1)] + y_std[-(step+1)]) * pred_scale + pred_offset * step,
+            color="r",
+            alpha=0.3,
+            linewidth=0.,
+        )
+
+    if xinv:
+        ax.invert_xaxis()
+    if ylim is not None:
+        ax.set_ylim(ylim)
+    fig.tight_layout()
+    if show:
+        plt.show()
+    if save is not None:
+        fig.savefig(save)
+    plt.close()
 
     return
 

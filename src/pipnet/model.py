@@ -16,9 +16,9 @@ def get_act(act):
     """
     Get an activation function from its name
 
-    Input:  - act   Activation function name
+    Input:  - act       Activation function name
 
-    Output: - actf  Activation function
+    Output: - act_fun   Activation function
     """
     
     act = act.lower()

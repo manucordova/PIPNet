@@ -24,8 +24,7 @@ from pipnet import utils
 from pipnet import model
 
 torch.set_num_threads(os.cpu_count())
-model_name = "final_model_mixed"
-epoch = 250
+model_name = "PIPNet_model"
 device = "cuda" if torch.cuda.is_available() else "cpu"
 debug = False
 
@@ -37,14 +36,14 @@ app.config["MAX_CONTENT_PATH"] = int(1e6)
 spectra = []
 
 # Load PIPNet model
-with open(f"data/1D/{model_name}/data_pars.pk", "rb") as F:
+with open(f"trained_models/{model_name}/data_pars.pk", "rb") as F:
     data_pars = pk.load(F)
-with open(f"data/1D/{model_name}/model_pars.pk", "rb") as F:
+with open(f"trained_models/{model_name}/model_pars.pk", "rb") as F:
     model_pars = pk.load(F)
 
 net = model.ConvLSTMEnsemble(**model_pars)
 net.load_state_dict(
-    torch.load(f"data/1D/{model_name}/epoch_{epoch}_network", map_location=torch.device(device))
+    torch.load(f"trained_models/{model_name}/network", map_location=torch.device(device))
 )
 net.eval()
 
