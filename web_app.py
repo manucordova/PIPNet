@@ -8,10 +8,8 @@
 import flask as flk
 import werkzeug.utils as wk
 
-import os
-import sys
-
 import numpy as np
+import os
 import torch
 
 import plotly
@@ -33,6 +31,9 @@ app = flk.Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "./tmp/"
 app.config["MAX_CONTENT_PATH"] = int(1e6)
 
+if not os.path.exists("./tmp/"):
+    os.mkdir("./tmp/")
+
 spectra = []
 
 # Load PIPNet model
@@ -51,7 +52,6 @@ net.eval()
 @app.route("/")
 @app.route("/home")
 def home():
-
     return flk.render_template("home.html")
 
 # Predict page
