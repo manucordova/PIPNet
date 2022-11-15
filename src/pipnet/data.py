@@ -7,6 +7,7 @@
 
 import numpy as np
 import torch
+import scipy as sp
 
 
 
@@ -648,7 +649,7 @@ class Dataset(torch.utils.data.Dataset):
 
 
 
-    def finalize_spectra(self, iso, specs, brd_specs, ws):
+    def finalize_spectra(self, iso, specs, brd_specs, ws, return_ws=False):
 
         # Set isotropic spectra to positive values
         iso = np.real(iso)
@@ -682,10 +683,16 @@ class Dataset(torch.utils.data.Dataset):
         # Add dummy single-peak isotropic spectra to get the same array shape for all data generation
         if specs.shape[0] < self.nmax:
             specs = np.pad(specs, ((0, self.nmax - specs.shape[0]), (0, 0)))
-
-        return (torch.from_numpy(brd_specs.astype(np.float32)),
-                torch.from_numpy(specs.astype(np.float32)),
-                torch.from_numpy(iso.astype(np.float32)))
+        
+        if return_ws:
+            return (torch.from_numpy(brd_specs.astype(np.float32)),
+                    torch.from_numpy(specs.astype(np.float32)),
+                    torch.from_numpy(iso.astype(np.float32)),
+                    ws, ws_enc[:, 0, 0])
+        else:
+            return (torch.from_numpy(brd_specs.astype(np.float32)),
+                    torch.from_numpy(specs.astype(np.float32)),
+                    torch.from_numpy(iso.astype(np.float32)))
     
 
 
@@ -723,18 +730,132 @@ class Dataset(torch.utils.data.Dataset):
     
 
 
-    def __getitem__(self, _):
+    def __getitem__(self, _, ws=None, return_ws=False):
         """
         Generate an input
         """
 
         # Generate isotropic spectrum
         n, specs, iso = self.gen_iso()
-        ws, ls1, ls2, ms0, ms1, ms2, ss1, ss2, ps, hs = self.gen_mas(n)
+        ws, ls1, ls2, ms0, ms1, ms2, ss1, ss2, ps, hs = self.gen_mas(n, ws=ws)
 
         brd_specs = self.mas_broaden(specs, ws, ls1, ls2, ms0, ms1, ms2, ss1, ss2, ps, hs)
 
         # Normalize spectra
         iso, specs, brd_specs = self.normalize_spectra(iso, specs, brd_specs)
 
-        return self.finalize_spectra(iso, specs, brd_specs, ws)
+        return self.finalize_spectra(iso, specs, brd_specs, ws, return_ws=return_ws)
+
+
+
+class Dataset2D(torch.utils.data.Dataset):
+    """
+    """
+    def __init__(
+        self,
+        params_x,
+        params_y,
+        rot_prob=0.5,
+        rot_range=[0., 90.],
+    ):
+
+        super(Dataset2D, self).__init__()
+        
+        self.xgen = Dataset(**params_x)
+        self.ygen = Dataset(**params_y)
+
+        self.prot = rot_prob
+        self.rrot = rot_range
+
+        return
+    
+
+
+    def make_2d(self, X, Y, ws=None):
+        """
+        Make 2D spectrum from two 1D spectra
+
+        Inputs: - X     First 1D spectrum or batch of spectra
+                - Y     Second 1D spectrum or batch of spectra
+                - ws    Array of MAS rates corresponding to each 1D spectrum
+
+        Output: - Z     Output 2D spectrum or batch of spectra
+        """
+
+        if X.ndim == 3 and Y.ndim == 3:
+            
+            Z = torch.einsum("wcp,wcq->wcqp", X, Y)
+            
+            # Encode MAS rate
+            if ws is not None:
+                W = np.expand_dims(ws, (1, 2))
+                W = np.repeat(W, Z.shape[-2], axis=1)
+                W = np.repeat(W, Z.shape[-1], axis=2)
+                Z[:, -1, :, :] = torch.tensor(W)
+
+        elif X.ndim == 2 and Y.ndim == 2:
+            Z = torch.einsum("wp,wq->wqp", X, Y)
+
+        else:
+            raise ValueError(f"Unhandled tensor dimensions: {X.ndim} (x), {Y.ndim} (y)")
+
+        return Z
+
+
+    
+    def generate_batch(self, size=4):
+        """
+        Generate a batch of data:
+
+        Input:      - size  Batch size
+
+        Outputs:    - X     Batch of inputs
+                    - y     Batch of outputs
+        """
+
+        X = []
+        y = []
+
+        for i in range(size):
+            Xi, yi, _ = self.__getitem__(0)
+            X.append(Xi.unsqueeze(0))
+            y.append(yi.unsqueeze(0))
+
+        X = torch.cat(X, dim=0)
+        y = torch.cat(y, dim=0)
+
+        return X, y
+    
+    
+    
+    def __len__(self):
+        """
+        Dummy function for pytorch to work properly
+        """
+
+        return int(1e12)
+    
+
+
+    def __getitem__(self, _):
+        """
+        Generate an input
+        """
+
+        # Generate 1D spectra
+        X, _, iso_x, ws, ws_enc = self.xgen.__getitem__(0, return_ws=True)
+        Y, _, iso_y = self.ygen.__getitem__(0, ws=ws)
+
+        # Make 2D spectra from 1D spectra
+        Z = self.make_2d(X, Y, ws_enc)
+        iso = self.make_2d(iso_x, iso_y)
+
+        # Rotate 2D spectra
+        if np.random.random() < self.prot:
+            da = self.rrot[1] - self.rrot[0]
+            a0 = self.rrot[0]
+            a = a0 + da * np.random.random()
+            Z = torch.tensor(sp.ndimage.rotate(Z, a, axes=(-2, -1), reshape=False))
+            iso = torch.tensor(sp.ndimage.rotate(iso, a, axes=(-2, -1), reshape=False))
+
+        return Z, ws, iso
