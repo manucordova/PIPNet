@@ -117,8 +117,8 @@ loss_pars = dict(
 train_pars = dict(
     batch_size = 8,
     num_workers = 20,
-    batches_per_epoch = 1000,
-    batches_per_eval = 200,
+    batches_per_epoch = 500,
+    batches_per_eval = 100,
     n_epochs = 250,
     change_loss={20: {"trg_fuzz": 1.0, "factor": 10.},
                  50: {"trg_fuzz": 0.0, "factor": 0.},
