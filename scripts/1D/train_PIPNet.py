@@ -123,7 +123,7 @@ train_pars = dict(
     change_loss={20: {"trg_fuzz": 1.0, "factor": 10.},
                  50: {"trg_fuzz": 0.0, "factor": 0.},
                 },
-    out_dir = "../../data/1D/PIPNet_1D_model/",
+    out_dir = "../../data/1D/PIPNet_model/",
     device = device,
     monitor_end = "\n"
 )
