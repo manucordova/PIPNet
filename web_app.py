@@ -16,7 +16,6 @@ import plotly
 import plotly.express as px
 import json
 import zipfile
-import pickle as pk
 
 from pipnet import utils
 from pipnet import model
@@ -37,10 +36,10 @@ if not os.path.exists("./tmp/"):
 spectra = []
 
 # Load PIPNet model
-with open(f"trained_models/{model_name}/data_pars.pk", "rb") as F:
-    data_pars = pk.load(F)
-with open(f"trained_models/{model_name}/model_pars.pk", "rb") as F:
-    model_pars = pk.load(F)
+with open(f"trained_models/{model_name}/data_pars.json", "r") as F:
+    data_pars = json.load(F)
+with open(f"trained_models/{model_name}/model_pars.json", "r") as F:
+    model_pars = json.load(F)
 
 net = model.ConvLSTMEnsemble(**model_pars)
 net.load_state_dict(
