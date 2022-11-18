@@ -527,7 +527,7 @@ def extract_1d_pip(in_dir, compound, parts, res):
 
 
 
-def load_2d_topspin_spectrum(path, return_title=False):
+def load_2d_topspin_spectrum(path, return_title=False, load_imag=False):
     """
     Load a 2D spectrum from Topspin and retrieve the MAS rate
     The MAS rate is first looked for in the title of the experiment,
@@ -543,23 +543,34 @@ def load_2d_topspin_spectrum(path, return_title=False):
                 - ppm           Array of chemical shift values in the spectrum
                 - hz            Array of frequency values in the spectrum
     """
-
-    #TODO
-    raise NotImplementedError()
     
     if not path.endswith("/"):
         path += "/"
+    
+    if not os.path.exists(path):
+        raise ValueError(f"{path} not found!")
 
     pd = f"{path}pdata/1/"
-    fr = pd + "1r"
-    fi = pd + "1i"
+    frr = pd + "2rr"
+    fri = pd + "2ri"
+    fir = pd + "2ir"
+    fii = pd + "2ii"
     ti = pd + "title"
 
     # Load spectrum
-    with open(fr, "rb") as F:
-        dr = np.fromfile(F, np.int32).astype(float)
-    with open(fi, "rb") as F:
-        di = np.fromfile(F, np.int32).astype(float)
+    with open(frr, "rb") as F:
+        drr = np.fromfile(F, np.int32).astype(float)
+    if load_imag:
+        with open(fri, "rb") as F:
+            dri = np.fromfile(F, np.int32).astype(float)
+        with open(fir, "rb") as F:
+            dir = np.fromfile(F, np.int32).astype(float)
+        with open(fii, "rb") as F:
+            dii = np.fromfile(F, np.int32).astype(float)
+    else:
+        dri = None
+        dir = None
+        dii = None
         
     wr = -1.
     # Get MAS rate from title
@@ -585,9 +596,17 @@ def load_2d_topspin_spectrum(path, return_title=False):
             except:
                 pass
         if l.startswith("##$TD="):
-            TD = int(l.split("=")[1].strip())
+            TD_x = int(l.split("=")[1].strip())
         if l.startswith("##$SW_h="):
-            SW = float(l.split("=")[1].strip())
+            SW_x = float(l.split("=")[1].strip())
+    
+    with open(f"{path}acqu2s", "r") as F:
+        lines = F.read().split("\n")
+    for l in lines:
+        if l.startswith("##$TD="):
+            TD_y = int(l.split("=")[1].strip())
+        if l.startswith("##$SW_h="):
+            SW_y = float(l.split("=")[1].strip())
 
     # Parse processing parameters
     with open(f"{pd}procs", "r") as F:
@@ -595,25 +614,40 @@ def load_2d_topspin_spectrum(path, return_title=False):
 
     for l in lines:
         if l.startswith("##$SI="):
-            n_pts = int(l.split("=")[1].strip())
+            n_pts_x = int(l.split("=")[1].strip())
         if l.startswith("##$OFFSET="):
-            offset = float(l.split("=")[1].strip())
+            offset_x = float(l.split("=")[1].strip())
         if l.startswith("##$SF="):
-            SF = float(l.split("=")[1].strip())
+            SF_x = float(l.split("=")[1].strip())
+
+    with open(f"{pd}proc2s", "r") as F:
+        lines = F.read().split("\n")
+
+    for l in lines:
+        if l.startswith("##$SI="):
+            n_pts_y = int(l.split("=")[1].strip())
+        if l.startswith("##$OFFSET="):
+            offset_y = float(l.split("=")[1].strip())
+        if l.startswith("##$SF="):
+            SF_y = float(l.split("=")[1].strip())
             
     # Generate chemical shift and frequency arrays
-    AQ = TD / (2 * SW)
-    hz = offset * SF - np.arange(n_pts) / (2 * AQ * n_pts / TD)
-    ppm = hz / SF
+    AQ_x = TD_x / (2 * SW_x)
+    hz_x = offset_x * SF_x - np.arange(n_pts_x) / (2 * AQ_x * n_pts_x / TD_x)
+    ppm_x = hz_x / SF_x
+
+    AQ_y = TD_y / (2 * SW_y)
+    hz_y = offset_y * SF_y - np.arange(n_pts_y) / (2 * AQ_y * n_pts_y / TD_y)
+    ppm_y = hz_y / SF_y
 
     if return_title:
-        return dr, di, wr, ppm, hz, title
+        return drr, dri, dir, dii, wr, ppm_x, ppm_y, hz_x, hz_y, title
     else:
-        return dr, di, wr, ppm, hz
+        return drr, dri, dir, dii, wr, ppm_x, ppm_y, hz_x, hz_y
 
 
 
-def extract_2d_dataset(path, exp_init, exp_final, exps=None, return_titles=False):
+def extract_2d_dataset(path, exp_init, exp_final, exps=None, return_titles=False, load_imag=False):
     """
     Extract a vmas dataset of 1D spectra
 
@@ -629,61 +663,99 @@ def extract_2d_dataset(path, exp_init, exp_final, exps=None, return_titles=False
                 - sorted_X_real     Array of real parts of the spectra
                 - sorted_X_imag     Array of imaginary parts of the spectra
     """
-
-    #TODO
-    raise NotImplementedError()
     
     if not path.endswith("/"):
         path += "/"
     
+    if not os.path.exists(path):
+        raise ValueError(f"{path} not found!")
+    
     ws = []
-    X_real = []
-    X_imag = []
+    X_rr = []
+    X_ri = []
+    X_ir = []
+    X_ii = []
     titles = []
 
     if exps is None:
         exps = np.arange(exp_init, exp_final+1)
     
+    first = True
     for d in os.listdir(path):
         if d.isnumeric() and int(d) in exps:
             if return_titles:
-                Xr, Xi, wr, ppm, hz, title = load_1d_topspin_spectrum(f"{path}{d}/", return_title=True)
+                Xrr, Xri, Xir, Xii, wr, ppm_x, ppm_y, hz_x, hz_y, title = load_2d_topspin_spectrum(f"{path}{d}/", return_title=True, load_imag=load_imag)
                 titles.append(title)
             else:
-                Xr, Xi, wr, ppm, hz = load_1d_topspin_spectrum(f"{path}{d}/")
-            X_real.append(Xr)
-            X_imag.append(Xi)
+                Xrr, Xri, Xir, Xii, wr, ppm_x, ppm_y, hz_x, hz_y = load_2d_topspin_spectrum(f"{path}{d}/", load_imag=load_imag)
+            
+            Xrr = Xrr.reshape(len(ppm_y), len(ppm_x))
+            if load_imag:
+                Xri = Xri.reshape(len(ppm_y), len(ppm_x))
+                Xir = Xir.reshape(len(ppm_y), len(ppm_x))
+                Xii = Xii.reshape(len(ppm_y), len(ppm_x))
+
+            if not first:
+                f = sp.interpolate.interp2d(ppm_x, ppm_y, Xrr)
+                Xrr = f(ppm_x0, ppm_y0)
+                if load_imag:
+                    f = sp.interpolate.interp2d(ppm_x, ppm_y, Xri)
+                    Xri = f(ppm_x0, ppm_y0)
+                    f = sp.interpolate.interp2d(ppm_x, ppm_y, Xir)
+                    Xir = f(ppm_x0, ppm_y0)
+                    f = sp.interpolate.interp2d(ppm_x, ppm_y, Xii)
+                    Xii = f(ppm_x0, ppm_y0)
+            else:
+                first = False
+                ppm_x0 = ppm_x
+                ppm_y0 = ppm_y
+                hz_x0 = hz_x
+                hz_y0 = hz_y
+
+            X_rr.append(Xrr)
+            X_ri.append(Xri)
+            X_ir.append(Xir)
+            X_ii.append(Xii)
             ws.append(wr)
+    
+    ppm_x = ppm_x0
+    ppm_y = ppm_y0
+    hz_x = hz_x0
+    hz_y = hz_y0
     
     sorted_inds = np.argsort(ws)
     
     sorted_ws = np.array([ws[i] for i in sorted_inds])
     
-    sorted_X_real = np.array([X_real[i] for i in sorted_inds])
-    sorted_X_imag = np.array([X_imag[i] for i in sorted_inds])
-    
+    sorted_X_rr = np.array([X_rr[i] for i in sorted_inds]).reshape(-1, len(ppm_y), len(ppm_x))
+    if load_imag:
+        sorted_X_ri = np.array([X_ri[i] for i in sorted_inds])
+        sorted_X_ir = np.array([X_ir[i] for i in sorted_inds])
+        sorted_X_ii = np.array([X_ii[i] for i in sorted_inds])
+    else:
+        sorted_X_ri = None
+        sorted_X_ir = None
+        sorted_X_ii = None
+
     if return_titles:
         sorted_titles = [titles[i] for i in sorted_inds]
-        return ppm, hz, sorted_ws, sorted_X_real, sorted_X_imag, sorted_titles
+        return ppm_x, ppm_y, hz_x, hz_y, sorted_ws, sorted_X_rr, sorted_X_ri, sorted_X_ir, sorted_X_ii, sorted_titles
     else:
-        return ppm, hz, sorted_ws, sorted_X_real, sorted_X_imag
+        return ppm_x, ppm_y, hz_x, hz_y, sorted_ws, sorted_X_rr, sorted_X_ri, sorted_X_ir, sorted_X_ii
 
 
 
-def prepare_2d_input(xr, ws, data_pars, xi=None, xmax=0.5):
+def prepare_2d_input(xrr, ws, data_pars, xri=None, xir=None, xii=None, xmax=0.5):
 
-    #TODO
-    raise NotImplementedError()
+    X = torch.Tensor(xrr).unsqueeze(0).unsqueeze(2)
 
-    X = torch.Tensor(xr).unsqueeze(0).unsqueeze(2)
-
-    Xint = torch.sum(X, dim=3)
+    Xint = torch.sum(X, dim=(3, 4))
 
     if data_pars["encode_imag"]:
-        X = torch.cat([X, torch.Tensor(xi).unsqueeze(0).unsqueeze(2)], dim=2)
+        X = torch.cat([X, torch.Tensor(xri).unsqueeze(0).unsqueeze(2), torch.Tensor(xir).unsqueeze(0).unsqueeze(2), torch.Tensor(xii).unsqueeze(0).unsqueeze(2)], dim=2)
     
     # Normalize integrals
-    X /= Xint[:, :, :, None]
+    X /= Xint[:, :, :, None, None]
     X /= torch.max(X[:, :, 0]) / xmax
 
 
@@ -691,9 +763,9 @@ def prepare_2d_input(xr, ws, data_pars, xi=None, xmax=0.5):
         W = torch.tensor(ws) / data_pars["wr_norm_factor"]
         if data_pars["wr_inv"]:
             W = 1. / W
-        W = W.unsqueeze(0).unsqueeze(2).unsqueeze(3)
+        W = W.unsqueeze(0).unsqueeze(2).unsqueeze(3).unsqueeze(4)
 
-        X = torch.cat([X, W.repeat(1, 1, 1, X.shape[-1])], axis=2)
+        X = torch.cat([X, W.repeat(1, 1, 1, X.shape[-2], X.shape[-1])], axis=2)
 
     return X.type(torch.float32)
 
@@ -716,14 +788,17 @@ def plot_2d_iso_prediction(
     level_neg=True,
     level_typ="mul",
     all_steps=False,
+    norm_pred=False,
+    lw=1.,
+    equal_axes=True,
     show=True,
     save=None,
 ):
 
     if xvals is None:
-        xvals = np.arange(X.shape[-2])
+        xvals = np.arange(X.shape[-1])
     if yvals is None:
-        yvals = np.arange(X.shape[-1])
+        yvals = np.arange(X.shape[-2])
     
     if level_typ == "mul":
         if level_inc is None:
@@ -753,6 +828,9 @@ def plot_2d_iso_prediction(
         nsteps = y_pred.shape[0]
     else:
         nsteps = 1
+    
+    if norm_pred:
+        y_pred /= np.max(y_pred, axis=(1, 2))[:, np.newaxis, np.newaxis]
 
     # Plot all prediction steps
     for step in range(nsteps):
@@ -772,32 +850,35 @@ def plot_2d_iso_prediction(
         hs = []
 
         if np.max(X[-(step+1), 0]) > levels[0]:
-            ax1.contour(XX, YY, X[-(step+1), 0], levels=levels, colors="C0", linewidths=1.)
-            ax2.contour(XX, YY, X[-(step+1), 0], levels=levels, colors="C0", linewidths=1.)
+            ax1.contour(XX, YY, X[-(step+1), 0], levels=levels, colors="C0", linewidths=lw)
+            ax2.contour(XX, YY, X[-(step+1), 0], levels=levels, colors="C0", linewidths=lw)
             if ax3 is not None:
-                ax3.contour(XX, YY, X[-(step+1), 0], levels=levels, colors="C0", linewidths=1.)
-        if neg_levels is not None and np.min(X) < neg_levels[-1]:
-            ax1.contour(XX, YY, X[-(step+1), 0], levels=neg_levels, colors="C2", linewidths=1.)
-            ax2.contour(XX, YY, X[-(step+1), 0], levels=neg_levels, colors="C2", linewidths=1.)
+                ax3.contour(XX, YY, X[-(step+1), 0], levels=levels, colors="C0", linewidths=lw)
+        if neg_levels is not None and np.min(X[-(step+1), 0]) < neg_levels[-1]:
+            ax1.contour(XX, YY, X[-(step+1), 0], levels=neg_levels, colors="C2", linewidths=lw)
+            ax2.contour(XX, YY, X[-(step+1), 0], levels=neg_levels, colors="C2", linewidths=lw)
             if ax3 is not None:
-                ax3.contour(XX, YY, X[-(step+1), 0], levels=neg_levels, colors="C2", linewidths=1.)
+                ax3.contour(XX, YY, X[-(step+1), 0], levels=neg_levels, colors="C2", linewidths=lw)
         hs.append(mpl.lines.Line2D([0], [0], color="C0"))
 
         if np.max(y_pred[-(step+1)]) > levels[0]:
-            ax2.contour(XX, YY, y_pred[-(step+1)], levels=levels, colors="r", linewidths=1.)
+            ax2.contour(XX, YY, y_pred[-(step+1)], levels=levels, colors="r", linewidths=lw)
         hs.append(mpl.lines.Line2D([0], [0], color="r"))
 
         if y_trg is not None:
             labels.append("Ground-truth")
             if np.max(y_trg) > levels[0]:
-                ax3.contour(XT, YT, y_trg, levels=levels, colors="k", linewidths=1.)
+                ax3.contour(XT, YT, y_trg, levels=levels, colors="k", linewidths=lw)
             hs.append(mpl.lines.Line2D([0], [0], color="k"))
         ax2.set_yticklabels([])
-        ax3.set_yticklabels([])
+        if ax3 is not None:
+            ax3.set_yticklabels([])
         
-        ax1.axis("equal")
-        ax2.axis("equal")
-        ax3.axis("equal")
+        if equal_axes:
+            ax1.axis("equal")
+            ax2.axis("equal")
+            if ax3 is not None:
+                ax3.axis("equal")
         if xinv:
             ax1.invert_xaxis()
             ax2.invert_xaxis()

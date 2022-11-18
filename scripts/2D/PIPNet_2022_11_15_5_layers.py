@@ -124,6 +124,7 @@ train_pars = dict(
                  50: {"trg_fuzz": 0.0, "factor": 0.},
                 },
     out_dir = "../../data/2D/PIPNet_2022_11_15_5_layers/",
+    save_every=10,
     device = device,
     monitor_end = "\n"
 )

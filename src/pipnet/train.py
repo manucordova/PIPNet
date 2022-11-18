@@ -18,6 +18,7 @@ def evaluate(
     batches_per_eval=10,
     avg_models=False,
     out_dir=None,
+    save_every=1,
     device="cpu",
     monitor_end="\n",
 ):
@@ -72,7 +73,7 @@ def evaluate(
 
     net.train()
 
-    if out_dir is not None:
+    if out_dir is not None and epoch % save_every == 0:
         torch.save(net.state_dict(), out_dir + f"epoch_{epoch}_network")
         np.save(out_dir + f"epoch_{epoch}_in.npy", X.cpu().numpy())
         np.save(out_dir + f"epoch_{epoch}_trg.npy", y.cpu().numpy())
@@ -96,6 +97,7 @@ def train(
     change_loss={},
     out_dir=None,
     num_workers=1,
+    save_every=1,
     device="cpu",
     monitor_end="\n",
 ):
@@ -201,6 +203,7 @@ def train(
                 batches_per_eval=batches_per_eval,
                 avg_models=avg_models,
                 out_dir=out_dir,
+                save_every=save_every,
                 device=device,
                 monitor_end=monitor_end
             )
