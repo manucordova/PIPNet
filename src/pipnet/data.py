@@ -817,7 +817,7 @@ class Dataset2D(torch.utils.data.Dataset):
         y = []
 
         for i in range(size):
-            Xi, yi, _ = self.__getitem__(0)
+            Xi, _, yi = self.__getitem__(0)
             X.append(Xi.unsqueeze(0))
             y.append(yi.unsqueeze(0))
 
@@ -855,7 +855,10 @@ class Dataset2D(torch.utils.data.Dataset):
             da = self.rrot[1] - self.rrot[0]
             a0 = self.rrot[0]
             a = a0 + da * np.random.random()
-            Z = torch.tensor(sp.ndimage.rotate(Z, a, axes=(-2, -1), reshape=False))
+            if ws is not None:
+                Z[:, :-1] = torch.tensor(sp.ndimage.rotate(Z[:, :-1], a, axes=(-2, -1), reshape=False))
+            else:
+                Z = torch.tensor(sp.ndimage.rotate(Z, a, axes=(-2, -1), reshape=False))
             iso = torch.tensor(sp.ndimage.rotate(iso, a, axes=(-2, -1), reshape=False))
 
         return Z, ws, iso
