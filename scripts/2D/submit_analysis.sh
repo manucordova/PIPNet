@@ -18,4 +18,4 @@ source activate PIPNet
 
 srun python -u ANALYSE-visualize_training.py ${1%.py} >> ${1%.py}.log
 
-srun python -u ANALYSE-evaluate_model.py ${1%.py} >> ${1%.py}.log
+srun python -u ANALYSE-evaluate_model.py ${1%.py} $2 >> ${1%.py}.log
