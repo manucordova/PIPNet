@@ -1347,15 +1347,31 @@ if eval_constant:
     for i in range(X.shape[1]):
         X[:, i, 0] = X[:, -1, 0]
     
-    # Make predictions
-    with torch.no_grad():
-        y_pred, y_std, ys_pred = net(X)
+    y_pred = []
+    y_std = []
+    ys_pred = []
+    for ibatch in range(n_batch):
+        # Generate dataset
 
-    if net.return_all_layers:
-        if net.ndim == 1:
-            y = y.repeat((1, y_pred.shape[1], 1))
-        elif net.ndim == 2:
-            y = y.repeat((1, y_pred.shape[1], 1, 1))
+        print(f"  Batch {ibatch + 1}/{n_batch}")
+
+        # Make predictions
+        with torch.no_grad():
+            yi_pred, yi_std, yis_pred = net(X[ibatch*batch_size:(ibatch+1)*batch_size])
+
+        if net.return_all_layers:
+            if net.ndim == 1:
+                yi = yi.repeat((1, yi_pred.shape[1], 1))
+            elif net.ndim == 2:
+                yi = yi.repeat((1, yi_pred.shape[1], 1, 1))
+
+        y_pred.append(yi_pred)
+        y_std.append(yi_std)
+        ys_pred.append(yis_pred)
+
+    y_pred = torch.cat(y_pred)
+    y_std = torch.cat(y_std)
+    ys_pred = torch.cat(ys_pred, dim=1)
 
     for ishow in range(n_show):
         utils.plot_2d_iso_prediction(
