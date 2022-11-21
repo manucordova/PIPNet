@@ -41,6 +41,7 @@ class IsoGenerator():
         lw_range=[[5e1, 2e2]],
         lw_probs=[1.],
         int_range=[0.5, 1.],
+        norm_height=False,
         phase=0.,
         debug=False,
     ):
@@ -71,7 +72,8 @@ class IsoGenerator():
         self.lw_range = lw_range
         self.lw_probs = lw_probs
         self.int_range = int_range
-        self.phase=phase
+        self.norm_height = norm_height
+        self.phase = phase
         self.debug = debug
 
         # Get time domain points
@@ -163,6 +165,10 @@ class IsoGenerator():
 
         # Fourier transform
         isos = np.fft.fft(fids, axis=1)
+
+        # Normalize by height instead of integral
+        if self.norm_height:
+            isos /= np.max(np.real(isos), axis=1)[:, np.newaxis]
 
         # Randomize intensity
         da = self.int_range[1] - self.int_range[0]

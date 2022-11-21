@@ -783,12 +783,12 @@ def plot_2d_iso_prediction(
     xinv=False,
     yinv=False,
     level_num=32,
-    level_min=0.01,
+    level_min=0.05,
     level_inc=None,
     level_neg=True,
     level_typ="mul",
     all_steps=False,
-    norm_pred=False,
+    normalize=True,
     lw=1.,
     equal_axes=True,
     show=True,
@@ -810,7 +810,7 @@ def plot_2d_iso_prediction(
         levels = np.array([level_min+(level_inc*i) for i in range(level_num)])
     else:
         raise ValueError(f"Unknown level type: {level_typ} (should be \"mul\" or \"add\")")
-    
+
     if level_neg:
         neg_levels = -1. * levels[::-1]
     else:
@@ -828,12 +828,10 @@ def plot_2d_iso_prediction(
         nsteps = y_pred.shape[0]
     else:
         nsteps = 1
-    
-    if norm_pred:
-        y_pred /= np.max(y_pred, axis=(1, 2))[:, np.newaxis, np.newaxis]
 
     # Plot all prediction steps
     for step in range(nsteps):
+
         if y_trg is None:
             fig = plt.figure(figsize=(6,3))
             ax1 = fig.add_subplot(1,2,1)
@@ -848,6 +846,12 @@ def plot_2d_iso_prediction(
         wr = X[-(step+1), 1, 0, 0] * wr_factor / 1000.
         labels = [f"{wr:.0f} kHz MAS", "PIPNet"]
         hs = []
+
+        if normalize:
+            X[-(step+1), 0] /= np.max(X[-(step+1), 0])
+            y_pred[-(step+1)] /= np.max(y_pred[-(step+1)])
+            if y_trg is not None:
+                y_trg /= np.max(y_trg)
 
         if np.max(X[-(step+1), 0]) > levels[0]:
             ax1.contour(XX, YY, X[-(step+1), 0], levels=levels, colors="C0", linewidths=lw)
