@@ -65,8 +65,9 @@ iso_pars = dict(
     gmax = 1,
     spread = 5.,
     lw_range = [[5e1, 2e2], [1e2, 5e2], [1e2, 1e3]],
-    lw_probs = [0.7, 0.2, 0.1],
-    int_range = [0.5, 1.], # Intensity
+    lw_probs = [0.4, 0.3, 0.3],
+    int_range = [0.1, 1.], # Intensity
+    norm_height = True,
     phase = 0.,
     debug = False,
 )
@@ -80,9 +81,9 @@ mas_pars = dict(
     
     # First-order MAS-dependent parameters
     mas1_lw_range = [[1e7, 5e7], [5e7, 1e8]],
-    mas1_lw_probs = [0.8, 0.2],
+    mas1_lw_probs = [0.6, 0.4],
     mas1_m_range = [[0., 0.], [0., 1e4], [1e4, 5e4]],
-    mas1_m_probs = [0.1, 0.1, 0.8],
+    mas1_m_probs = [0.2, 0.2, 0.6],
     mas1_s_range = [[-1e7, 1e7]],
     mas1_s_probs = [1.],
 
@@ -91,9 +92,9 @@ mas_pars = dict(
     mas2_lw_range = [[0., 0.], [1e11, 5e11]],
     mas2_lw_probs = [0.5, 0.5],
     mas2_m_range = [[0., 0.], [1e8, 5e8]],
-    mas2_m_probs = [0.8, 0.2],
+    mas2_m_probs = [0.6, 0.4],
     mas2_s_range = [[0., 0.], [-2e10, 2e10]],
-    mas2_s_probs = [0.8, 0.2],
+    mas2_s_probs = [0.6, 0.4],
     
     # Other MAS-dependent parameters
     non_mas_p = 0.5,
@@ -120,8 +121,8 @@ data_pars = dict(
     mas_s_noise = 25.,
     
     smooth_end_len = 10, # Smooth ends of spectra
-    iso_spec_norm = 40., # Normalization factor for peaks
-    mas_spec_norm = 8., # Normalization factor for MAS spectra
+    iso_spec_norm = 1.5, # Normalization factor for peaks
+    mas_spec_norm = 0.5, # Normalization factor for MAS spectra
     wr_norm_factor = 100_000.,
     wr_inv = False, # Encode inverse of MAS rate instead of MAS rate
     gen_mas_shifts = True,
