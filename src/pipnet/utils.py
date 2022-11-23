@@ -681,8 +681,8 @@ def extract_2d_dataset(path, exp_init, exp_final, exps=None, return_titles=False
         exps = np.arange(exp_init, exp_final+1)
     
     first = True
-    for d in os.listdir(path):
-        if d.isnumeric() and int(d) in exps:
+    for d in exps:
+        if os.path.exists(f"{path}{d}/"):
             if return_titles:
                 Xrr, Xri, Xir, Xii, wr, ppm_x, ppm_y, hz_x, hz_y, title = load_2d_topspin_spectrum(f"{path}{d}/", return_title=True, load_imag=load_imag)
                 titles.append(title)
@@ -695,22 +695,22 @@ def extract_2d_dataset(path, exp_init, exp_final, exps=None, return_titles=False
                 Xir = Xir.reshape(len(ppm_y), len(ppm_x))
                 Xii = Xii.reshape(len(ppm_y), len(ppm_x))
 
-            if not first:
-                f = sp.interpolate.interp2d(ppm_x, ppm_y, Xrr)
+            if first:
+                first = False
+                ppm_x0 = ppm_x.copy()
+                ppm_y0 = ppm_y.copy()
+                hz_x0 = hz_x.copy()
+                hz_y0 = hz_y.copy()
+            else:
+                f = sp.interpolate.interp2d(ppm_x, ppm_y, Xrr[::-1, ::-1])
                 Xrr = f(ppm_x0, ppm_y0)
                 if load_imag:
-                    f = sp.interpolate.interp2d(ppm_x, ppm_y, Xri)
+                    f = sp.interpolate.interp2d(ppm_x, ppm_y, Xri[::-1, ::-1])
                     Xri = f(ppm_x0, ppm_y0)
-                    f = sp.interpolate.interp2d(ppm_x, ppm_y, Xir)
+                    f = sp.interpolate.interp2d(ppm_x, ppm_y, Xir[::-1, ::-1])
                     Xir = f(ppm_x0, ppm_y0)
-                    f = sp.interpolate.interp2d(ppm_x, ppm_y, Xii)
+                    f = sp.interpolate.interp2d(ppm_x, ppm_y, Xii[::-1, ::-1])
                     Xii = f(ppm_x0, ppm_y0)
-            else:
-                first = False
-                ppm_x0 = ppm_x
-                ppm_y0 = ppm_y
-                hz_x0 = hz_x
-                hz_y0 = hz_y
 
             X_rr.append(Xrr)
             X_ri.append(Xri)
