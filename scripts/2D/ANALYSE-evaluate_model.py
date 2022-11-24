@@ -57,7 +57,7 @@ eval_nw = True
 nw_max = 16
 
 eval_noise = True
-noise_levels = [0., 1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4, 1e-3, 2e-3, 5e-3, 1e-2]
+noise_levels = [0., 1e-4, 2e-4, 5e-4, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 0.1]
 
 eval_shift_noise = True
 shift_noise_levels = [0., 10., 20., 30., 40., 50., 60., 70., 80., 90., 100.]
