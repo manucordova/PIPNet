@@ -56,7 +56,7 @@ low_mas = [50000., 60000., 70000., 80000., 90000.]
 eval_nw = False
 nw_max = 16
 
-eval_noise = True
+eval_noise = False
 noise_levels = [0., 1e-4, 2e-4, 5e-4, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 0.1]
 
 eval_shift_noise = False
@@ -69,7 +69,7 @@ eval_shift = False
 shift_values = [True, False]
 shift_labels = ["Shift", "No shift"]
 
-eval_constant = False
+eval_constant = True
 
 iso_pars = dict(
     td = 128,
@@ -1388,6 +1388,19 @@ if eval_constant:
     # Compute loss
     if net.is_ensemble:
         ys = torch.cat([torch.unsqueeze(y.clone(), 0) for _ in range(ys_pred.shape[0])])
+        
+        a, _ = ys.max(4)
+        a, _ = a.max(3)
+        a, _ = a.max(2)
+        a, _ = a.max(0)
+
+        a2, _ = ys_pred.max(4)
+        a2, _ = a2.max(3)
+        a2, _ = a2.max(2)
+        a2, _ = a2.max(0)
+
+        ys *= (a2 / a)[None, :, None, None, None]
+        
         _, [iso_mae, int_mae] = loss1(ys_pred, ys)
         _, [iso_mse, _] = loss2(ys_pred, ys)
 

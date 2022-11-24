@@ -1343,7 +1343,7 @@ if eval_constant:
     
     print("Generating constant dataset")
     
-    y = X[:, -1, :1] / 5.
+    y = X[:, -1, :1]
     for i in range(X.shape[1]):
         X[:, i, 0] = X[:, -1, 0]
     
@@ -1388,6 +1388,19 @@ if eval_constant:
     # Compute loss
     if net.is_ensemble:
         ys = torch.cat([torch.unsqueeze(y.clone(), 0) for _ in range(ys_pred.shape[0])])
+        
+        a, _ = ys.max(4)
+        a, _ = a.max(3)
+        a, _ = a.max(2)
+        a, _ = a.max(0)
+
+        a2, _ = ys_pred.max(4)
+        a2, _ = a2.max(3)
+        a2, _ = a2.max(2)
+        a2, _ = a2.max(0)
+
+        ys *= (a2 / a)[None, :, None, None, None]
+        
         _, [iso_mae, int_mae] = loss1(ys_pred, ys)
         _, [iso_mse, _] = loss2(ys_pred, ys)
 
