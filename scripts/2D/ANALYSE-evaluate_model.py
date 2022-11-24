@@ -1067,8 +1067,7 @@ if eval_noise:
         
         # Update data parameters
         data_pars2 = copy.deepcopy(data_pars)
-        data_pars2["noise"] = noise
-        dataset = data.Dataset2D(params_x=data_pars2, params_y=data_pars2)
+        dataset = data.Dataset2D(params_x=data_pars2, params_y=data_pars2, noise=noise)
         
         X = []
         y = []

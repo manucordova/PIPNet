@@ -763,6 +763,7 @@ class Dataset2D(torch.utils.data.Dataset):
         params_y,
         rot_prob=0.5,
         rot_range=[0., 90.],
+        noise=0.,
     ):
 
         super(Dataset2D, self).__init__()
@@ -772,6 +773,7 @@ class Dataset2D(torch.utils.data.Dataset):
 
         self.prot = rot_prob
         self.rrot = rot_range
+        self.noise = noise
 
         return
     
@@ -866,5 +868,8 @@ class Dataset2D(torch.utils.data.Dataset):
             else:
                 Z = torch.tensor(sp.ndimage.rotate(Z, a, axes=(-2, -1), reshape=False))
             iso = torch.tensor(sp.ndimage.rotate(iso, a, axes=(-2, -1), reshape=False))
+
+        if self.noise > 0.:
+            Z[:, :, :-1] += torch.randn_like(Z[:, :, :-1]) * self.noise
 
         return Z, ws, iso
