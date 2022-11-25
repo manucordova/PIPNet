@@ -123,7 +123,7 @@ train_pars = dict(
     n_epochs = 250,
     change_loss={25: {"trg_fuzz": 0.0, "factor": 0.},
                 },
-    out_dir = "../../data/2D/PIPNet_2022_11_25_3_layers/",
+    out_dir = "../../data/2D/PIPNet_2022_11_25_4_layers/",
     save_every=50,
     device = device,
     monitor_end = "\n"
