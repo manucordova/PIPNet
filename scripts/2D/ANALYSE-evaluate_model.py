@@ -81,7 +81,7 @@ iso_pars = dict(
     gmax = 1,
     spread = 5.,
     lw_range = [[5e1, 2e2], [1e2, 5e2], [1e2, 1e3]],
-    lw_probs = [0.4, 0.3, 0.3],
+    lw_probs = [0.6, 0.2, 0.2],
     int_range = [0.1, 1.], # Intensity
     norm_height = True,
     phase = 0.,
@@ -96,8 +96,8 @@ mas_pars = dict(
     mas_phase_scale = 0.05,
     
     # First-order MAS-dependent parameters
-    mas1_lw_range = [[1e7, 5e7], [5e7, 1e8]],
-    mas1_lw_probs = [0.6, 0.4],
+    mas1_lw_range = [[1e7, 2e7], [1e7, 5e7], [5e7, 1e8]],
+    mas1_lw_probs = [0.6, 0.3, 0.1],
     mas1_m_range = [[0., 0.], [0., 1e4], [1e4, 5e4]],
     mas1_m_probs = [0.2, 0.2, 0.6],
     mas1_s_range = [[-1e7, 1e7]],
@@ -108,9 +108,9 @@ mas_pars = dict(
     mas2_lw_range = [[0., 0.], [1e11, 5e11]],
     mas2_lw_probs = [0.5, 0.5],
     mas2_m_range = [[0., 0.], [1e8, 5e8]],
-    mas2_m_probs = [0.6, 0.4],
+    mas2_m_probs = [0.5, 0.5],
     mas2_s_range = [[0., 0.], [-2e10, 2e10]],
-    mas2_s_probs = [0.6, 0.4],
+    mas2_s_probs = [0.5, 0.5],
     
     # Other MAS-dependent parameters
     non_mas_p = 0.5,
