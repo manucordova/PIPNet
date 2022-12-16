@@ -37,7 +37,7 @@ batch_size = 16
 n_batch = 64
 n_show = 64
 
-epoch = 200
+epoch = 250
 eval_all_steps = False
 
 eval_peaks = True
