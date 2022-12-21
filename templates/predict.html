@@ -8,8 +8,10 @@
   <p>
     First, create your Topspin dataset and make sure that only the spectra used for the prediction are present in the dataset.
     Make sure to properly phase and correct the baseline of the spectra. The MAS rate used should be present in the title
-    of the experiment in order to automatically retrieve it. The spectral resolution should be set to around 25 Hz in order to 
-    ensure the correct behaviour of the model. You can then zip the dataset and upload it by dragging it below.
+    of the experiment in order to automatically retrieve it. For example, a 100 kHz MAS spectrum should be indicated as "100 kHz",
+    "100kHz", "100000 Hz", or "100000Hz" in the title of the experiment for the MAS rate to be detected correctly.
+    The spectral resolution should be set to around 25 Hz in order to  ensure the correct behaviour of the model.
+    You can then zip the dataset and upload it by dragging it below.
   </p>
   <p>
     After this is done, you will be able to choose the range of MAS rates to use for the prediction, as well as the chemical
@@ -28,7 +30,7 @@
     The third panel shows the evolution of the prediction of the isotropic spectrum after the addition of each MAS spectrum.
   </p>
   <p>
-    You can download the predictions by clicking on the "Download predictions" at the bottom of the page.
+    You can download the predictions in JSON format by clicking on the "Download predictions" at the bottom of the page. The 
   </p>
 
   <form enctype="multipart/form-data" id="upload">
