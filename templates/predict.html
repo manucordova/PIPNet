@@ -5,6 +5,32 @@
 
   <h2>Upload your dataset</h2>
 
+  <p>
+    First, create your Topspin dataset and make sure that only the spectra used for the prediction are present in the dataset.
+    Make sure to properly phase and correct the baseline of the spectra. The MAS rate used should be present in the title
+    of the experiment in order to automatically retrieve it. The spectral resolution should be set to around 25 Hz in order to 
+    ensure the correct behaviour of the model. You can then zip the dataset and upload it by dragging it below.
+  </p>
+  <p>
+    After this is done, you will be able to choose the range of MAS rates to use for the prediction, as well as the chemical
+    shift range. The sensitivity is a parameter used to tune the amplitude of the spectra given to the model. It should generally
+    be kept to a value of one, but if you have a very intense peak in your spectra, then increasing the sensitivity might improve
+    the prediction for low intensity peaks.
+  </p>
+  <p>
+    You will also be able to choose individually which spectrum to consider to perform the prediction, and to verify and edit
+    the MAS rates detected for all spectra.
+  </p>
+  <p>
+    Once this is all done, just click on the "Predict" button to obtain the predicted isotropic spectrum. Three panels will show up.
+    The first one displays the MAS spectrum measured at the highest rate, along with the final predicted isotropic spectrum.
+    The second shows all spectra used for the prediction as well as the final predicted isotropic spectrum.
+    The third panel shows the evolution of the prediction of the isotropic spectrum after the addition of each MAS spectrum.
+  </p>
+  <p>
+    You can download the predictions by clicking on the "Download predictions" at the bottom of the page.
+  </p>
+
   <form enctype="multipart/form-data" id="upload">
     <div class="upload_form">
       <input type="file" multiple ref="fileInput" name="dataset" id="dataset"></input>

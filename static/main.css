@@ -22,6 +22,20 @@ header {
   padding-left: 5%;
 }
 
+footer {
+    position: fixed;
+    z-index: 10;
+    bottom: 0px;
+    left: 0px;
+    height: 100px;
+    right: 0px;
+    overflow: hidden;
+    background-color: #EEEEEE;
+    border-top: 2px solid #AAAAAA;
+    border-radius: 20px;
+    padding-left: 5%;
+  }
+  
 header .header-button {
   color: #000000;
   text-transform: uppercase;
@@ -51,6 +65,7 @@ header .icon {
 
 main {
   margin-top: 120px;
+  margin-bottom: 150px;
   margin-left: 5%;
   width: 90%;
 }

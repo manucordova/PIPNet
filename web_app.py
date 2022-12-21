@@ -23,7 +23,7 @@ from pipnet import model
 torch.set_num_threads(os.cpu_count())
 model_name = "PIPNet_model"
 device = "cuda" if torch.cuda.is_available() else "cpu"
-debug = False
+debug = True
 
 # Initialize the Flask app
 app = flk.Flask(__name__)
@@ -168,22 +168,6 @@ def run_prediction():
             "all": ys.tolist(),
         }
     )
-
-
-@app.route("/examples")
-def examples():
-    return flk.render_template("examples.html")
-
-
-@app.route("/about")
-def about():
-    return flk.render_template("about.html")
-
-
-@app.route("/contact")
-def contact():
-    return flk.render_template("contact.html")
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8008, debug=debug)
