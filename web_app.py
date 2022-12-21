@@ -23,7 +23,7 @@ from pipnet import model
 torch.set_num_threads(os.cpu_count())
 model_name = "PIPNet_model"
 device = "cuda" if torch.cuda.is_available() else "cpu"
-debug = True
+debug = False
 
 # Initialize the Flask app
 app = flk.Flask(__name__)
