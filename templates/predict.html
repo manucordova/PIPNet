@@ -30,7 +30,11 @@
     The third panel shows the evolution of the prediction of the isotropic spectrum after the addition of each MAS spectrum.
   </p>
   <p>
-    You can download the predictions in JSON format by clicking on the "Download predictions" at the bottom of the page. The 
+    You can download the predictions in JSON format by clicking on the "Download predictions" at the bottom of the page.
+    The JSON file contains the chemical shift array in the "x" variable, the experimental spectra in the "specs" variable,
+    the list of MAS rates in the "wrs" variable, in addition to the predictions. The 16 predictions given by each sub-model in the
+    committee model after the addition of each MAS spectrum are contained in the "all" variable, and the average and standard deviation
+    over the 16 models at each step are given in the "preds" and "err" variables, respectively.
   </p>
 
   <form enctype="multipart/form-data" id="upload">
