@@ -1,0 +1,1 @@
+{"input_dim": 2, "n_models": 1, "hidden_dim": [64, 64, 64, 64], "kernel_size": [5, 5, 5, 5], "num_layers": 4, "batch_input": 1, "bias": true, "output_bias": true, "return_all_layers": true, "batch_norm": false, "ndim": 2, "independent": true, "output_kernel_size": 5, "output_act": "sigmoid", "noise": 0.005, "invert": false}

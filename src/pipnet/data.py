@@ -558,7 +558,6 @@ class Dataset(torch.utils.data.Dataset):
                 - p     Peak position
                 - w     Width of the function
                 - m     Mixing paramer (w=0: pure Gaussian, w=1: pure Lorentzian)
-                - h     Height of the function
 
         Output: - y     GLS function evaluated on the array x
         """
@@ -756,6 +755,7 @@ class Dataset(torch.utils.data.Dataset):
 
 class Dataset2D(torch.utils.data.Dataset):
     """
+    2D PIP dataset with GLS broadening
     """
     def __init__(
         self,
@@ -765,6 +765,13 @@ class Dataset2D(torch.utils.data.Dataset):
         rot_range=[0., 90.],
         noise=0.,
     ):
+        """
+        Inputs: - params_x      Parameters for the generation of 1D datasets along the x-axis
+                - params_y      Parameters for the generation of 1D datasets along the y-axis
+                - rot_prob      Rotation probability
+                - rot_range     Range of rotation angles (in degrees)
+                - noise         Amount of noise to add to the MAS spectra
+        """
 
         super(Dataset2D, self).__init__()
         

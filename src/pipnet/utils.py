@@ -461,66 +461,6 @@ def get_relative_1d_integrals(x, y, regions):
 
 
 
-def extract_1d_pip(in_dir, compound, parts, res):
-    """
-    Extract 1d PIP prediction
-    """
-    
-    if compound == "mdma":
-        c = compound
-    elif compound == "molnupiravir":
-        c = "molnu"
-    else:
-        c = compound[:3]
-    
-    ys_part_means = []
-    ys_part_stds = []
-    ys_ppms = []
-    
-    if len(parts) == 0 or len(res) == 0:
-        return [], [], []
-    
-    for p, n in zip(parts, res):
-        
-        
-        d = f"{in_dir}{compound}_{n}/"
-        
-        if not os.path.exists(d):
-            return [], [], []
-    
-        ys_part = []
-
-        i_guess = 1
-        while os.path.exists(f"{d}{c}_{p}_guess_r{i_guess}.mat"):
-
-            m = sp.io.loadmat(f"{d}{c}_{p}_guess_r{i_guess}.mat")
-
-            ys_part.append(m["x"][:-3])
-            ppm = m["ppm"][0, m["range"][0]]
-            
-            i_guess += 1
-        
-        if len(ys_ppms) > 0:
-            already_ppms = np.concatenate(ys_ppms, axis=0)
-            inds = np.where(np.logical_or(ppm < np.min(already_ppms), ppm > np.max(already_ppms)))[0]
-        else:
-            inds = range(len(ppm))
-        
-        ys_ppms.append(ppm[inds])
-        ys_part = np.concatenate(ys_part, axis=1)
-        ys_part_means.append(np.mean(ys_part, axis=1)[inds])
-        ys_part_stds.append(np.std(ys_part, axis=1)[inds])
-    
-    ys_ppms = np.concatenate(ys_ppms, axis=0)
-    ys_part_means = np.concatenate(ys_part_means, axis=0)
-    ys_part_stds = np.concatenate(ys_part_stds, axis=0)
-    
-    inds = np.argsort(ys_ppms)
-    
-    return ys_ppms[inds], ys_part_means[inds], ys_part_stds[inds]
-
-
-
 ###########################################################################
 ###                            2D functions                             ###
 ###########################################################################
@@ -536,12 +476,18 @@ def load_2d_topspin_spectrum(path, return_title=False, load_imag=False):
 
     Input:      - path          Path to the Topspin directory
                 - return_title  Return the title of the spectrum
+                - load_imag     Load the imaginary part of the spectrum
 
-    Outputs:    - dr            Real part of the spectrum
-                - di            Imaginary part of the spectrum
+    Outputs:    - drr           Purely real part of the spectrum
+                - dri           Mixed part of the spectrum
+                - dir           Mixed part of the spectrum
+                - dii           Purely imaginary part of the spectrum
                 - wr            MAS rate (-1 if the rate is not found)
-                - ppm           Array of chemical shift values in the spectrum
-                - hz            Array of frequency values in the spectrum
+                - ppm_x         Array of chemical shift values in the x-axis of the spectrum
+                - ppm_y         Array of chemical shift values in the y-axis of the spectrum
+                - hz_x          Array of frequency values in the x-axis of the spectrum
+                - hz_y          Array of frequency values in the y-axis of the spectrum
+                - title         Title of the spectrum
     """
     
     if not path.endswith("/"):
@@ -656,12 +602,18 @@ def extract_2d_dataset(path, exp_init, exp_final, exps=None, return_titles=False
                 - exp_final         Index of the last experiment (inclusive)
                 - exps              Custom indices of all experiments
                 - return_titles     Return spectra titles
+                - load_imag         Load the imaginary part of the spectra
 
-    Outputs:    - ppm               Array of chemical shifts
-                - hz                Array of frequencies
+    Outputs:    - ppm_x             Array of chemical shifts in the x-axis
+                - ppm_y             Array of chemical shifts in the y-axis
+                - hz_x              Array of frequencies in the x-axis
+                - hz_y              Array of frequencies in the y-axis
                 - sorted_ws         Array of MAS rates
-                - sorted_X_real     Array of real parts of the spectra
-                - sorted_X_imag     Array of imaginary parts of the spectra
+                - sorted_X_rr       Array of purely real parts of the spectra
+                - sorted_X_ri       Array of mixed parts of the spectra
+                - sorted_X_ir       Array of mixed parts of the spectra
+                - sorted_X_ii       Array of purely imaginary parts of the spectra
+                - sorted_titles     Array of titles of the spectra
     """
     
     if not path.endswith("/"):
@@ -907,270 +859,3 @@ def plot_2d_iso_prediction(
         plt.close()
 
     return
-
-
-
-def plot_multiple_2d_iso_predictions(
-    X,
-    y_pred,
-    y_std,
-    pred_scale=1.,
-    pred_offset=0.,
-    xvals=None,
-    x_trg=None,
-    xinv=False,
-    ylim=None,
-    show=True,
-    save=None,
-):
-
-    #TODO
-    raise NotImplementedError()
-
-    if xvals is None:
-        xvals = np.arange(X.shape[-1])
-    if x_trg is None:
-        x_trg = xvals
-    
-    nsteps = y_pred.shape[0]
-    fig = plt.figure(figsize=(4,3))
-    ax = fig.add_subplot(1,1,1)
-    ax.plot(xvals, X[-1, 0] + (nsteps * pred_offset), linewidth=1., zorder=0)
-    # Plot all prediction steps
-    for step in range(nsteps):
-        ax.plot(xvals, y_pred[-(step+1)] * pred_scale + pred_offset * step, "r", linewidth=1., zorder=-1)
-
-        ax.fill_between(
-            xvals,
-            (y_pred[-(step+1)] - y_std[-(step+1)]) * pred_scale + pred_offset * step,
-            (y_pred[-(step+1)] + y_std[-(step+1)]) * pred_scale + pred_offset * step,
-            color="r",
-            alpha=0.3,
-            linewidth=0.,
-        )
-
-    if xinv:
-        ax.invert_xaxis()
-    if ylim is not None:
-        ax.set_ylim(ylim)
-    fig.tight_layout()
-    if show:
-        plt.show()
-    if save is not None:
-        fig.savefig(save)
-    plt.close()
-
-    return
-
-
-
-def plot_2d_dataset(
-    X,
-    y=None,
-    y_scale=1.,
-    offset=0.,
-    y_offset=0.,
-    xvals=None,
-    xinv=False,
-    c0=np.array([0., 1., 1.]),
-    dc=np.array([0., -1., 0.]),
-    ylim=None,
-    show=True,
-    save=None,
-):
-
-    #TODO
-    raise NotImplementedError()
-
-    if xvals is None:
-        xvals = np.arange(X.shape[-1])
-
-    fig = plt.figure(figsize=(4,3))
-    ax = fig.add_subplot(1,1,1)
-
-    n = X.shape[0]
-
-    for i, Xi in enumerate(X):
-        ax.plot(xvals, Xi[0] + offset * i, linewidth=1., color=c0+(i/(n-1))*dc)
-    
-    if y is not None:
-        ax.plot(xvals, y[0]* y_scale + y_offset, linewidth=1., color="r")
-
-    if xinv:
-        ax.invert_xaxis()
-    if ylim is not None:
-        ax.set_ylim(ylim)
-    fig.tight_layout()
-    if show:
-        plt.show()
-    if save is not None:
-        fig.savefig(save)
-    plt.close()
-
-    return
-
-
-
-def extract_2d_linewidth(x, y, x_range, verbose=False):
-    """
-    Extract the linewidth (FWHM) of a peak in the given x-axis range
-
-    Inputs:     - x         x-axis values
-                - y         y-axis values
-                - x_range   Range of x-values containing the peak
-
-    Outputs:    - lw        Extracted linewidth (FWHM)
-                - x0        Extracted peak position
-    """
-
-    #TODO
-    raise NotImplementedError()
-
-    xmin = np.min(x_range)
-    xmax = np.max(x_range)
-
-    # Select range and identify top of the peak
-    inds = np.where(np.logical_and(x >= xmin, x <= xmax))[0]
-    top = np.max(y[inds])
-    x0 = x[inds[np.argmax(y[inds])]]
-    
-    xr = None
-    xl = None
-    
-    # Search for crossing of the half maximum
-    for i, j in zip(inds[:-1], inds[1:]):
-        # Crossing on the right
-        if y[i] > top / 2 and y[j] < top / 2:
-            dx = x[j] - x[i]
-            dy = y[j] - y[i]
-            dy2 = (top / 2) - y[i]
-            xr = x[i] + dx * dy2 / dy
-            
-        # Crossing on the left
-        if y[i] < top / 2 and y[j] > top / 2:
-            dx = x[j] - x[i]
-            dy = y[j] - y[i]
-            dy2 = (top / 2) - y[i]
-            xl = x[i] + dx * dy2 / dy
-    
-    if xl is None:
-        if verbose:
-            print("Warning: no left boundary found!")
-        xl = x[inds[0]]
-    if xr is None:
-        if verbose:
-            print("Warning: no right boundary found!")
-        xr = x[inds[-1]]
-
-    lw = abs(xl - xr)
-
-    return lw, x0
-
-
-
-def extract_2d_linewidths(x, y, x_ranges):
-
-    #TODO
-    raise NotImplementedError()
-
-    lws = np.zeros(len(x_ranges))
-    pks = np.zeros(len(x_ranges))
-
-    for i, x_range in enumerate(x_ranges):
-        lws[i], pks[i] = extract_1d_linewidth(x, y, x_range)
-
-    return lws, pks
-
-
-
-def get_relative_2d_integrals(x, y, regions):
-    """
-    Compare the relative integrals in different regions of two spectra
-
-    Inputs:     - x             x-axis values
-                - y             y-axis values
-                - regions       Regions to compute the integrals for
-
-    Outputs:    - integrals     List of integrals for each region
-    """
-
-    #TODO
-    raise NotImplementedError()
-
-    integrals = np.zeros(len(regions))
-
-    for i, (r1, r2) in enumerate(regions):
-        i1 = np.argmin(np.abs(x - r1))
-        i2 = np.argmin(np.abs(x - r2))
-
-        il = min(i1, i2)
-        ir = max(i1, i2)
-
-        integrals[i] = np.sum(y[il:ir])
-        
-    integrals /= np.sum(integrals)
-
-    return integrals
-
-
-
-def extract_2d_pip(in_dir, compound, parts, res):
-    """
-    Extract 1d PIP prediction
-    """
-
-    #TODO
-    raise NotImplementedError()
-    
-    if compound == "mdma":
-        c = compound
-    elif compound == "molnupiravir":
-        c = "molnu"
-    else:
-        c = compound[:3]
-    
-    ys_part_means = []
-    ys_part_stds = []
-    ys_ppms = []
-    
-    if len(parts) == 0 or len(res) == 0:
-        return [], [], []
-    
-    for p, n in zip(parts, res):
-        
-        
-        d = f"{in_dir}{compound}_{n}/"
-        
-        if not os.path.exists(d):
-            return [], [], []
-    
-        ys_part = []
-
-        i_guess = 1
-        while os.path.exists(f"{d}{c}_{p}_guess_r{i_guess}.mat"):
-
-            m = sp.io.loadmat(f"{d}{c}_{p}_guess_r{i_guess}.mat")
-
-            ys_part.append(m["x"][:-3])
-            ppm = m["ppm"][0, m["range"][0]]
-            
-            i_guess += 1
-        
-        if len(ys_ppms) > 0:
-            already_ppms = np.concatenate(ys_ppms, axis=0)
-            inds = np.where(np.logical_or(ppm < np.min(already_ppms), ppm > np.max(already_ppms)))[0]
-        else:
-            inds = range(len(ppm))
-        
-        ys_ppms.append(ppm[inds])
-        ys_part = np.concatenate(ys_part, axis=1)
-        ys_part_means.append(np.mean(ys_part, axis=1)[inds])
-        ys_part_stds.append(np.std(ys_part, axis=1)[inds])
-    
-    ys_ppms = np.concatenate(ys_ppms, axis=0)
-    ys_part_means = np.concatenate(ys_part_means, axis=0)
-    ys_part_stds = np.concatenate(ys_part_stds, axis=0)
-    
-    inds = np.argsort(ys_ppms)
-    
-    return ys_ppms[inds], ys_part_means[inds], ys_part_stds[inds]
