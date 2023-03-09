@@ -1,6 +1,6 @@
 # Python library
 numpy
-scipy
+scipy>=1.9
 torch
 torchvision
 torchaudio
