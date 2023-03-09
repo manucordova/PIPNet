@@ -845,7 +845,7 @@ class Dataset2D(torch.utils.data.Dataset):
     
 
 
-    def __getitem__(self, _):
+    def __getitem__(self, _, return_1d=False):
         """
         Generate an input
         """
@@ -868,8 +868,13 @@ class Dataset2D(torch.utils.data.Dataset):
             else:
                 Z = torch.tensor(sp.ndimage.rotate(Z, a, axes=(-2, -1), reshape=False))
             iso = torch.tensor(sp.ndimage.rotate(iso, a, axes=(-2, -1), reshape=False))
+        else:
+            a = 0.
 
         if self.noise > 0.:
             Z[:, :, :-1] += torch.randn_like(Z[:, :, :-1]) * self.noise
-
-        return Z, ws, iso
+    
+        if return_1d:
+            return Z, ws, iso, X, Y, iso_x, iso_y, a
+        else:
+            return Z, ws, iso
