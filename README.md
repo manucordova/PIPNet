@@ -2,7 +2,7 @@
 
 This is the code for the PIPNet machine learning model described [here (1D version)](https://doi.org/10.1002/anie.202216607). and [here (2D version)](Link TBA)
 
-## Abstract of the paper
+## Abstract of the papers
 
 ### 1D paper:
 
@@ -32,7 +32,7 @@ You can then open the link [localhost:8008/](http://localhost:8008/) to access t
 
 Alternatively, the model can be used throught the Jupyter notebook "ANALYSE-predict_experimental.ipynb" in the "scripts/1D/" directory.
 
-The 2D model can be run through the Jupyter notebook "ANALYSE-predict_experimental.ipynb" in the "scripts/2D/" directory.
+The 2D model can currently only be run through the Jupyter notebook "ANALYSE-predict_experimental.ipynb" in the "scripts/2D/" directory.
 
 ## Training a model
 
