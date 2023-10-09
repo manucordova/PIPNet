@@ -21,7 +21,7 @@ import scipy as sp
 
 
 
-def load_1d_topspin_spectrum(path, return_title=False):
+def load_1d_topspin_spectrum(path, return_title=False, load_imag=False):
     """
     Load a 1D spectrum from Topspin and retrieve the MAS rate
     The MAS rate is first looked for in the title of the experiment,
@@ -49,8 +49,11 @@ def load_1d_topspin_spectrum(path, return_title=False):
     # Load spectrum
     with open(fr, "rb") as F:
         dr = np.fromfile(F, np.int32).astype(float)
-    with open(fi, "rb") as F:
-        di = np.fromfile(F, np.int32).astype(float)
+    if load_imag:
+        with open(fi, "rb") as F:
+            di = np.fromfile(F, np.int32).astype(float)
+    else:
+        di = np.zeros_like(dr)
         
     wr = -1.
     # Get MAS rate from title
