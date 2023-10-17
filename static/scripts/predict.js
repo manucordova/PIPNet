@@ -1,334 +1,728 @@
+let spectrumIndex = 0
+let predicting = false
 
-var spectrum_index = 0;
-var predicting = false;
+let predInd = 0
 
-var pred_idx = 0;
+let unit = 'ppm'
+let unitLabel = 'ppm'
 
-var data;
-
-var preds;
-
-// Next/previous controls
-function change_spectrum(n) {
-  show_spectrum(spectrum_index += n);
+let labels = {
+  ppm: 'Chemical shift [ppm]',
+  Hz: 'Frequency [Hz]'
 }
 
-function show_spectrum(n) {
-  var i;
-  var spectra = document.getElementsByClassName("spectrum");
+let expnoParams = null
+
+let data
+
+let preds
+
+function ClosestIndex (arr, x) {
+  let i
+  let i0 = 0
+  for (i = 0; i < arr.length; i++) {
+    if (Math.abs(arr[i] - x) < Math.abs(arr[i0] - x)) {
+      i0 = i
+    }
+  }
+  return i0
+}
+
+// Next/previous controls
+function ChangeSpectrum (n) {
+  ShowSpectrum(spectrumIndex += n)
+}
+
+function ShowSpectrum (n) {
+  const spectra = document.getElementsByClassName('spectrum')
 
   if (n >= spectra.length) {
-    spectrum_index = 0;
+    spectrumIndex = 0
   } else if (n < 0) {
-    spectrum_index = spectra.length - 1;
+    spectrumIndex = spectra.length - 1
   }
 
-  for (i = 0; i < spectra.length; i++) {
-      spectra[i].style.display = "none";
+  for (let i = 0; i < spectra.length; i++) {
+    spectra[i].style.display = 'none'
   }
-  spectra[spectrum_index].style.display = "block";
+  spectra[spectrumIndex].style.display = 'block'
 
-  var ymax = 0;
-  for (i=0;i<data.length;i++) {
+  let ymax = 0
+  for (let i = 0; i < data.length; i++) {
     ymax = Math.max(ymax, Math.max(...data[i].yr))
   }
 
-  var disp = document.getElementById(`spectrum_fig${spectrum_index+1}`);
+  const disp = document.getElementById(`spectrum_fig${spectrumIndex + 1}`)
 
-  var xmin = Number(document.getElementById("rangel").value);
-  var xmax = Number(document.getElementById("ranger").value);
+  const xmin = Number(document.getElementById('rangel').value)
+  const xmax = Number(document.getElementById('ranger').value)
 
-  function plot_spectrum(spectrum_index) {
-    Plotly.newPlot(disp, [{x: data[spectrum_index].x, y: data[spectrum_index].yr.map(function(item) {return item/ymax}) }],
-                   {xaxis: {showgrid: false, showline: true, range: [xmin, xmax], zeroline: false, title: {text: "Chemical shift [ppm]"}},
-                    yaxis: {showgrid: false, showline: true, range: [0, 1.5], zeroline: false, showticklabels: false, title: {text: "Normalized intensity [a.u.]"}},
-                    margin: {l: 40, r: 20, t: 20, b: 40}});
+  function PlotSpectrum (spectrumIndex) {
+    Plotly.newPlot(
+      disp,
+      [{
+        x: data[spectrumIndex][unit],
+        y: data[spectrumIndex].yr.map(
+          function (item) {
+            return item / ymax
+          }
+        )
+      }],
+      {
+        xaxis: {
+          showgrid: false,
+          showline: true,
+          range: [xmin, xmax],
+          zeroline: false,
+          title: { text: labels[unitLabel] }
+        },
+        yaxis: {
+          showgrid: false,
+          showline: true,
+          range: [0, 1.5],
+          zeroline: false,
+          showticklabels: false,
+          title: {
+            text: 'Normalized intensity [a.u.]'
+          }
+        },
+        margin: {
+          l: 40,
+          r: 20,
+          t: 20,
+          b: 40
+        }
+      }
+    )
   }
 
-  plot_spectrum(spectrum_index);
-
+  PlotSpectrum(spectrumIndex)
 }
 
-function change_pred(n) {
-  plot_pred(document.getElementById("evolving-pred"), pred_idx += n)
+function UpdateRange () {
+  ShowSpectrum(spectrumIndex)
 }
 
-function plot_pred(elem, n) {
+function UpdateUnits () {
+  const units = document.getElementsByName('unit')
+  let i
+  for (i = 0; i < units.length; i++) {
+    if (units[i].checked) {
+      // Get current range
+      const rl = document.getElementById('rangel')
+      const rr = document.getElementById('ranger')
+      const xmin = Number(rl.value)
+      const xmax = Number(rr.value)
 
+      // Convert range and update unit
+      const imin = ClosestIndex(data[0][unit], xmin)
+      const imax = ClosestIndex(data[0][unit], xmax)
+
+      unit = units[i].value
+      unitLabel = units[i].value
+
+      if (document.getElementById('acqu2').checked) {
+        unit += '2'
+      }
+
+      rl.value = Number(Math.round(data[0][unit][imin]))
+      rr.value = Number(Math.round(data[0][unit][imax]))
+
+      document.getElementById('range-unit').innerHTML = ` ${unitLabel} `
+
+      // Update plots
+      ShowSpectrum(spectrumIndex)
+    }
+  }
+}
+
+function ChangePred (n) {
+  PlotPred(document.getElementById('evolving-pred'), predInd += n)
+}
+
+function PlotPred (elem, n) {
   if (n >= preds.preds.length) {
-    pred_idx = 0;
+    predInd = 0
   } else if (n < 0) {
-    pred_idx = preds.preds.length - 1;
+    predInd = preds.preds.length - 1
   }
 
-  var xmin = Number(document.getElementById("rangel").value);
-  var xmax = Number(document.getElementById("ranger").value);
+  const xmin = Number(document.getElementById('rangel').value)
+  const xmax = Number(document.getElementById('ranger').value)
 
-  var spec_idx = pred_idx + preds.specs.length - preds.preds.length;
+  const specIdx = predInd + preds.specs.length - preds.preds.length
 
-  var pred_y = preds.preds[pred_idx].map(function(item) {return item/Math.max(...preds.preds[pred_idx])})
-  var pred_dy = preds.err[pred_idx].map(function(item) {return item/Math.max(...preds.preds[pred_idx])})
-  var pred_ymax = pred_y.map((e, i) => e + pred_dy[i])
-  var pred_ymin = pred_y.map((e, i) => e - pred_dy[i])
+  const predY = preds.preds[predInd].map(
+    function (item) {
+      return item / Math.max(...preds.preds[predInd])
+    }
+  )
+  const predDy = preds.err[predInd].map(
+    function (item) {
+      return item / Math.max(...preds.preds[predInd])
+    }
+  )
+  const predYmax = predY.map((e, i) => e + predDy[i])
+  const predYmin = predY.map((e, i) => e - predDy[i])
 
-  Plotly.newPlot(elem, [{x: preds.x, y: preds.specs[spec_idx].map(function(item) {return item/Math.max(...preds.specs[spec_idx])}),
-                              hoverinfo: "x+y", name: `${preds.wrs[spec_idx]} KHz MAS spectrum`},
-                             {x: preds.x, y: pred_y, hoverinfo: "x+y", name: `Predicted PIP spectrum`},
-                             {x: preds.x, y: pred_ymax, fill: "tonexty", type: "scatter",
-                              mode: "none", fillcolor: "rgba(255, 127, 14, 0)", hoverinfo: "x", showlegend: false},
-                             {x: preds.x, y: pred_ymin, fill: "tonexty", type: "scatter",
-                              mode: "none", fillcolor: "rgba(255, 127, 14, 0.2)", hoverinfo: "x", name: `Predicted PIP uncertainty`}],
-                 {xaxis: {showgrid: false, showline: true, range: [xmin, xmax], zeroline: false, title: {text: "Chemical shift [ppm]"}},
-                  yaxis: {showgrid: false, showline: true, range: [0, 1.5], zeroline: false, showticklabels: false, title: {text: "Normalized intensity [a.u.]"}},
-                  margin: {l: 40, r: 20, t: 20, b: 40}, legend: {yanchor: "top", y: 0.99, xanchor: "right", x: 0.99}});
+  Plotly.newPlot(
+    elem,
+    [
+      {
+        x: preds[unitLabel],
+        y: preds.specs[specIdx].map(
+          function (item) {
+            return item / Math.max(...preds.specs[specIdx])
+          }
+        ),
+        hoverinfo: 'x+y',
+        name: `${preds.wrs[specIdx]} KHz MAS spectrum`
+      },
+      {
+        x: preds[unitLabel],
+        y: predY,
+        hoverinfo: 'x+y',
+        name: 'Predicted PIP spectrum'
+      },
+      {
+        x: preds[unitLabel],
+        y: predYmax,
+        fill: 'tonexty',
+        type: 'scatter',
+        mode: 'none',
+        fillcolor: 'rgba(255, 127, 14, 0)',
+        hoverinfo: 'x',
+        showlegend: false
+      },
+      {
+        x: preds[unitLabel],
+        y: predYmin,
+        fill: 'tonexty',
+        type: 'scatter',
+        mode: 'none',
+        fillcolor: 'rgba(255, 127, 14, 0.2)',
+        hoverinfo: 'x',
+        name: 'Predicted PIP uncertainty'
+      }
+    ],
+    {
+      xaxis: {
+        showgrid: false,
+        showline: true,
+        range: [xmin, xmax],
+        zeroline: false,
+        title: { text: labels[unitLabel] }
+      },
+      yaxis: {
+        showgrid: false,
+        showline: true,
+        range: [0, 1.5],
+        zeroline: false,
+        showticklabels: false,
+        title: { text: 'Normalized intensity [a.u.]' }
+      },
+      margin: {
+        l: 40,
+        r: 20,
+        t: 20,
+        b: 40
+      },
+      legend: {
+        yanchor: 'top',
+        y: 0.99,
+        xanchor: 'right',
+        x: 0.99
+      }
+    }
+  )
 }
 
-function plot_pred_all(elem, dy) {
-
-  var ymax = 1e-12;
-  for (i=0;i<preds.specs.length;i++) {
-    ymax = Math.max(ymax, Math.max(...preds.specs[i]));
+function PlotPredAll (elem, dy) {
+  let ymax = 1e-12
+  for (let i = 0; i < preds.specs.length; i++) {
+    ymax = Math.max(ymax, Math.max(...preds.specs[i]))
   }
 
-  var xmin = Number(document.getElementById("rangel").value);
-  var xmax = Number(document.getElementById("ranger").value);
+  const xmin = Number(document.getElementById('rangel').value)
+  const xmax = Number(document.getElementById('ranger').value)
 
-  var specs_to_plot = []
-  var c0 = [0, 255, 255];
-  var dc = [0, -255, 0];
-  var y0 = dy;
-  for (i=0;i<preds.specs.length;i++) {
+  const specsToPlot = []
+  const c0 = [0, 255, 255]
+  const dc = [0, -255, 0]
+  let y0 = dy
+  for (let i = 0; i < preds.specs.length; i++) {
+    const col = c0.map((e, k) => e + dc[k] * i / (preds.specs.length - 1))
 
-    var col = c0.map((e, k) => e+dc[k]*i/(preds.specs.length-1));
-
-    specs_to_plot.push({x: preds.x, y: preds.specs[i].map(function(item) {return y0+item/ymax}),
-                                hoverinfo: "x", name: `${preds.wrs[i]} KHz MAS spectrum`,
-                                line: {color: `rgb(${col[0]}, ${col[1]}, ${col[2]})`},
-                                showlegend: (i == 0 || i == preds.specs.length-1)});
-    y0 += dy;
+    specsToPlot.push({
+      x: preds[unitLabel],
+      y: preds.specs[i].map(function (item) { return y0 + (item / ymax) }),
+      hoverinfo: 'x',
+      name: `${preds.wrs[i]} KHz MAS spectrum`,
+      line: { color: `rgb(${col[0]}, ${col[1]}, ${col[2]})` },
+      showlegend: (i === 0 || i === preds.specs.length - 1)
+    })
+    y0 += dy
   }
 
-  var pred_y = preds.preds[preds.preds.length-1].map(function(item) {return item/Math.max(...preds.preds[preds.preds.length-1])})
-  var pred_dy = preds.err[preds.preds.length-1].map(function(item) {return item/Math.max(...preds.preds[preds.preds.length-1])})
-  var pred_ymax = pred_y.map((e, i) => e + pred_dy[i])
-  var pred_ymin = pred_y.map((e, i) => e - pred_dy[i])
+  const predY = preds.preds[preds.preds.length - 1].map(
+    function (item) {
+      return item / Math.max(...preds.preds[preds.preds.length - 1])
+    }
+  )
+  const predDy = preds.err[preds.preds.length - 1].map(
+    function (item) {
+      return item / Math.max(...preds.preds[preds.preds.length - 1])
+    }
+  )
+  const predYmax = predY.map((e, i) => e + predDy[i])
+  const predYmin = predY.map((e, i) => e - predDy[i])
 
-  specs_to_plot.push({x: preds.x, y: pred_y, hoverinfo: "x+y", name: `Predicted PIP spectrum`, line: {color: "rgb(255, 127, 14)"}});
-  specs_to_plot.push({x: preds.x, y: pred_ymax, fill: "tonexty", type: "scatter",
-                      mode: "none", fillcolor: "rgba(255, 127, 14, 0)", hoverinfo: "x", showlegend: false})
-  specs_to_plot.push({x: preds.x, y: pred_ymin, fill: "tonexty", type: "scatter",
-                      mode: "none", fillcolor: "rgba(255, 127, 14, 0.2)", hoverinfo: "x", name: `Predicted PIP uncertainty`})
+  specsToPlot.push(
+    {
+      x: preds[unitLabel],
+      y: predY,
+      hoverinfo: 'x+y',
+      name: 'Predicted PIP spectrum',
+      line: { color: 'rgb(255, 127, 14)' }
+    }
+  )
+  specsToPlot.push(
+    {
+      x: preds[unitLabel],
+      y: predYmax,
+      fill: 'tonexty',
+      type: 'scatter',
+      mode: 'none',
+      fillcolor: 'rgba(255, 127, 14, 0)',
+      hoverinfo: 'x',
+      showlegend: false
+    }
+  )
+  specsToPlot.push(
+    {
+      x: preds[unitLabel],
+      y: predYmin,
+      fill: 'tonexty',
+      type: 'scatter',
+      mode: 'none',
+      fillcolor: 'rgba(255, 127, 14, 0.2)',
+      hoverinfo: 'x',
+      name: 'Predicted PIP uncertainty'
+    }
+  )
 
-  Plotly.newPlot(elem, specs_to_plot,
-                 {xaxis: {showgrid: false, showline: true, range: [xmin, xmax], zeroline: false, title: {text: "Chemical shift [ppm]"}},
-                  yaxis: {showgrid: false, showline: true, range: [0, 2+y0], zeroline: false, showticklabels: false, title: {text: "Normalized intensity [a.u.]"}},
-                  margin: {l: 40, r: 20, t: 20, b: 40}, legend: {yanchor: "top", y: 0.99, xanchor: "right", x: 0.99}});
+  Plotly.newPlot(
+    elem,
+    specsToPlot,
+    {
+      xaxis: {
+        showgrid: false,
+        showline: true,
+        range: [xmin, xmax],
+        zeroline: false,
+        title: { text: labels[unitLabel] }
+      },
+      yaxis: {
+        showgrid: false,
+        showline: true,
+        range: [0, 2 + y0],
+        zeroline: false,
+        showticklabels: false,
+        title: {
+          text: 'Normalized intensity [a.u.]'
+        }
+      },
+      margin: {
+        l: 40,
+        r: 20,
+        t: 20,
+        b: 40
+      },
+      legend: {
+        yanchor: 'top',
+        y: 0.99,
+        xanchor: 'right',
+        x: 0.99
+      }
+    }
+  )
 }
 
-function update_sel_mas() {
-  var wr_min = Number(document.getElementById("mas-rangel").value);
-  var wr_max = Number(document.getElementById("mas-ranger").value);
+function UpdateSelMas () {
+  const wrMin = Number(document.getElementById('mas-rangel').value)
+  const wrMax = Number(document.getElementById('mas-ranger').value)
 
-  for (i=0;i<data.length;i++) {
-    if (Number(document.getElementById(`mas_fig${i+1}`).value) >= wr_min && Number(document.getElementById(`mas_fig${i+1}`).value) <= wr_max) {
-      document.getElementById(`select_${i+1}`).checked = true;
+  for (let i = 0; i < data.length; i++) {
+    if (Number(document.getElementById(`mas_fig${i + 1}`).value) >= wrMin && Number(document.getElementById(`mas_fig${i + 1}`).value) <= wrMax) {
+      document.getElementById(`select_${i + 1}`).checked = true
     } else {
-      document.getElementById(`select_${i+1}`).checked = false;
+      document.getElementById(`select_${i + 1}`).checked = false
+    }
+  }
+}
+
+function HasValidProcno (are2d, expno, procnos) {
+  let hasValid = false
+  for (const procno of procnos) {
+    if (are2d[`${expno}-${procno}`] !== null) {
+      hasValid = true
+      break
+    }
+  }
+  return hasValid
+}
+
+function GetPossibleProcnos () {
+  // Don't trigger if the list of expnos is still in construction
+  if (expnoParams == null) {
+    return
+  }
+
+  const possibleProcnos = []
+  const allProcnos = []
+  const allExpnos = []
+  for (const [expno, procnos] of Object.entries(expnoParams.procnos)) {
+    for (const procno of procnos) {
+      if (!allProcnos.includes(procno)) {
+        allProcnos.push(procno)
+      }
+    }
+
+    const expnoCheckBox = document.getElementById(`select_expno_${expno}`)
+    if (expnoCheckBox.checked) {
+      allExpnos.push(expno)
     }
   }
 
+  for (const procno of allProcnos) {
+    let valid = true
+    let is2d = null
+    for (const expno of allExpnos) {
+      if (expnoParams.are_2d[`${expno}-${procno}`] === null) {
+        valid = false
+        break
+      }
+      if (is2d === null) {
+        is2d = expnoParams.are_2d[`${expno}-${procno}`]
+      }
+
+      if (expnoParams.are_2d[`${expno}-${procno}`] !== is2d) {
+        valid = false
+        break
+      }
+    }
+    if (valid) {
+      possibleProcnos.push(procno)
+    }
+  }
+
+  console.log(possibleProcnos)
+
+  // Delete any previously generated element
+  const parent1 = document.getElementById('load-procno')
+  let parent2 = document.getElementById('select_procno')
+  if (parent2 !== null) {
+    parent2.remove()
+  }
+  parent2 = document.createElement('div')
+  parent2.id = 'select_procno'
+  parent1.appendChild(parent2)
+  let first = true
+  for (const procno of possibleProcnos) {
+    const childLabel = document.createElement('label')
+    childLabel.for = 'selected-procno'
+    childLabel.innerHTML = `Use procno ${procno}`
+    parent2.appendChild(childLabel)
+    const childBox = document.createElement('input')
+    childBox.type = 'radio'
+    childBox.name = 'selected-procno'
+    childBox.id = `selected-procno-${procno}`
+    childBox.value = procno
+    if (first) {
+      childBox.checked = true
+      first = false
+    }
+    parent2.appendChild(childBox)
+    parent2.appendChild(document.createElement('br'))
+  }
+
+  console.log(allExpnos)
 }
 
-$(function() {
-  $("#dataset").change(function() {
-
-    if (document.getElementById("dataset").value.length > 0) {
-
-      console.log("Uploading")
+// On dataset upload
+$(function () {
+  $('#dataset').change(function () {
+    if (document.getElementById('dataset').value.length > 0) {
+      console.log('Uploading')
 
       // Upload file to server
-      document.getElementById("preprocess").className = "hide";
-      document.getElementById("onpredict").className = "hide";
-      document.getElementById("preds").className = "hide";
-      setTimeout(function() {
-        document.getElementById("onupload").className = "appear";
-      }, 600);
+      document.getElementById('select-exp').className = 'hide'
+      document.getElementById('preprocess').className = 'hide'
+      document.getElementById('onpredict').className = 'hide'
+      document.getElementById('preds').className = 'hide'
+      document.getElementById('onupload').className = 'appear'
 
-      var form_data = new FormData();
-      form_data.append("dataset", document.getElementById("dataset").files[0])
+      const formData = new FormData()
+      formData.append('dataset', document.getElementById('dataset').files[0])
       $.ajax({
-        url: "/upload_dataset",
+        url: '/upload_dataset',
         cache: false,
         contentType: false,
         processData: false,
-        data: form_data,
-        type: "POST",
-        success: function(response) {
-
+        data: formData,
+        type: 'POST',
+        success: function (response) {
           // Show that the file successfully uploaded
-          document.getElementById("onupload").className = "hide";
-          setTimeout(function() {
-            document.getElementById("preprocess").className = "appear";
-          }, 600);
+          console.log('Uploaded!')
+          // Show that the file successfully uploaded
+          document.getElementById('onupload').className = 'hide'
+          setTimeout(function () {
+            document.getElementById('select-exp').className = 'appear'
+          }, 600)
 
-          // Show spectra
+          const parent = document.getElementById('load-expnos')
+          console.log(response.params)
 
-          n = response.spectra.length
-          for (i=0;i<response.spectra.length;i++) {
-            var d = document.createElement("div");
-            d.className = "spectrum";
+          for (const [expno, procnos] of Object.entries(response.params.procnos)) {
+            const childLabel = document.createElement('label')
+            childLabel.className = 'expno_selection'
+            childLabel.for = `select_expno_${expno}`
+            childLabel.innerHTML = `Include expno ${expno}: `
+            parent.appendChild(childLabel)
 
-
-
-            var child = document.createElement("div");
-            child.className = "spectrum_fig";
-            child.id = `spectrum_fig${i+1}`;
-            var child2 = document.createElement("div");
-            child2.className = "numbertext";
-            child2.innerHTML = `${i+1} / ${n}`;
-            child.appendChild(child2);
-            d.appendChild(child);
-
-            var child = document.createElement("div");
-            child.className = "spectrum_title";
-            var child2 = document.createElement("h4");
-            child2.innerHTML = "Spectrum information";
-            child.appendChild(child2)
-            var child2 = document.createElement("p");
-            child2.innerHTML = response.spectra[i].title;
-            child.appendChild(child2);
-            d.appendChild(child);
-
-            var child = document.createElement("div");
-            child.className = "spectrum_params"
-
-            var child2 = document.createElement("label");
-            child2.for = `select_${i+1}`;
-            child2.innerHTML = "Include spectrum";
-            child.appendChild(child2);
-            child.appendChild(document.createElement("br"));
-            var child2 = document.createElement("input");
-            child2.id = `select_${i+1}`;
-            child2.type = "checkbox";
-            child2.value = "1";
-            child2.checked = true;
-            child2.className = "include-checkbox"
-            child.appendChild(child2);
-            child.appendChild(document.createElement("br"));
-            child.appendChild(document.createElement("br"));
-
-            var child2 = document.createElement("label");
-            child2.for = `mas_fig${i+1}`;
-            child2.innerHTML = "MAS rate [kHz]";
-            child.appendChild(child2);
-            child.appendChild(document.createElement("br"));
-
-            var child2 = document.createElement("input");
-            child2.id = `mas_fig${i+1}`;
-            child2.type = "number";
-            child2.min = "1";
-            child2.value = response.spectra[i].wr;
-            child2.innerHTML = "MAS rate [kHz]";
-            child2.className = "masr"
-            child.appendChild(child2);
-
-            d.appendChild(child);
-
-            document.getElementById("spectra").appendChild(d);
+            const childBox = document.createElement('input')
+            childBox.id = `select_expno_${expno}`
+            childBox.type = 'checkbox'
+            childBox.checked = HasValidProcno(response.params.are_2d, expno, procnos)
+            childBox.disabled = !HasValidProcno(response.params.are_2d, expno, procnos)
+            childBox.classname = 'expno_selection_checkbox'
+            childBox.onchange = function () { GetPossibleProcnos() }
+            parent.appendChild(childBox)
+            parent.appendChild(document.createElement('br'))
           }
 
-          data = response.spectra;
+          expnoParams = response.params
 
-          show_spectrum(0);
-
-          update_sel_mas();
-
+          GetPossibleProcnos()
         },
-        error: function(error) {
-
+        error: function (error) {
           console.log(error)
+          document.getElementById('errormsg').innerHTML = error.responseText
 
-          document.getElementById("errormsg").innerHTML = error.responseText;
+          document.getElementById('preprocess').className = 'hide'
+          document.getElementById('onpredict').className = 'hide'
+          document.getElementById('preds').className = 'hide'
+          document.getElementById('onupload').className = 'hide'
 
-          setTimeout(function() {
-            document.getElementById("preprocess").className = "hide";
-            document.getElementById("onpredict").className = "hide";
-            document.getElementById("preds").className = "hide";
-            document.getElementById("onupload").className = "hide";
-          }, 1000);
+          document.getElementById('errormsg').className = 'appear'
 
-          document.getElementById("errormsg").className = "appear";
-
-          setTimeout(function() {
-            document.getElementById("errormsg").className = "hide";
-          }, 3000);
-          document.getElementById("dataset").value = "";
+          setTimeout(function () {
+            document.getElementById('errormsg').className = 'hide'
+          }, 10000)
+          document.getElementById('dataset').value = ''
         }
-      });
-
+      })
     }
-  });
-});
+  })
+})
 
-function run_prediction() {
+function GetSelectedExpnos () {
+  const expnos = []
+  for (const [expno, procnos] of Object.entries(expnoParams.procnos)) {
+    const box = document.getElementById(`select_expno_${expno}`)
+    if (box !== null) {
+      if (box.checked) {
+        expnos.push(expno)
+      }
+    }
+  }
+  return expnos
+}
 
-  document.getElementById("preds").className = "hide";
-  setTimeout(function() {
-    document.getElementById("onpredict").className = "appear";
-  }, 600);
+function GetSelectedProcno () {
+  let procno = null
+  const elems = document.getElementsByName('selected-procno')
+  for (const elem of elems) {
+    if (elem.checked) {
+      procno = elem.id
+    }
+  }
+  return procno
+}
 
-  var form_data = new FormData();
+function LoadDataset () {
+  document.getElementById('preprocess').className = 'hide'
+  document.getElementById('onpredict').className = 'hide'
+  document.getElementById('preds').className = 'hide'
+  document.getElementById('onload').className = 'appear'
 
-  for (var i=0;i<data.length;i++) {
-    data[i].wr = document.getElementById(`mas_fig${i+1}`).value;
-    data[i].include = document.getElementById(`select_${i+1}`).checked;
+  const formData = new FormData()
+  formData.append('expnos', GetSelectedExpnos())
+  formData.append('procno', GetSelectedProcno())
+  $.ajax({
+    url: '/load_dataset',
+    cache: false,
+    contentType: false,
+    processData: false,
+    data: formData,
+    type: 'POST',
+    success: function (response) {
+      // Show that the file successfully uploaded
+      document.getElementById('onload').className = 'hide'
+      setTimeout(function () {
+        document.getElementById('preprocess').className = 'appear'
+      }, 600)
+
+      // Show spectra
+      console.log(response)
+      if (response.spectra[0].ppm2.length === 0) {
+        document.getElementById('acqu2').disabled = true
+      }
+
+      const n = response.spectra.length
+      for (let i = 0; i < response.spectra.length; i++) {
+        const d = document.createElement('div')
+        d.className = 'spectrum'
+
+        let child = document.createElement('div')
+        child.className = 'spectrum_fig'
+        child.id = `spectrum_fig${i + 1}`
+        let child2 = document.createElement('div')
+        child2.className = 'numbertext'
+        child2.innerHTML = `${i + 1} / ${n}`
+        child.appendChild(child2)
+        d.appendChild(child)
+
+        child = document.createElement('div')
+        child.className = 'spectrum_title'
+        child2 = document.createElement('h4')
+        child2.innerHTML = 'Spectrum information'
+        child.appendChild(child2)
+        child2 = document.createElement('p')
+        child2.innerHTML = response.spectra[i].title
+        child.appendChild(child2)
+        d.appendChild(child)
+
+        child = document.createElement('div')
+        child.className = 'spectrum_params'
+
+        child2 = document.createElement('label')
+        child2.for = `select_${i + 1}`
+        child2.innerHTML = 'Include spectrum'
+        child.appendChild(child2)
+        child.appendChild(document.createElement('br'))
+        child2 = document.createElement('input')
+        child2.id = `select_${i + 1}`
+        child2.type = 'checkbox'
+        child2.value = '1'
+        child2.checked = true
+        child2.className = 'include-checkbox'
+        child.appendChild(child2)
+        child.appendChild(document.createElement('br'))
+        child.appendChild(document.createElement('br'))
+
+        child2 = document.createElement('label')
+        child2.for = `mas_fig${i + 1}`
+        child2.innerHTML = 'MAS rate [kHz]'
+        child.appendChild(child2)
+        child.appendChild(document.createElement('br'))
+
+        child2 = document.createElement('input')
+        child2.id = `mas_fig${i + 1}`
+        child2.type = 'number'
+        child2.min = '1'
+        child2.value = response.spectra[i].wr
+        child2.innerHTML = 'MAS rate [kHz]'
+        child2.className = 'masr'
+        child.appendChild(child2)
+
+        d.appendChild(child)
+
+        document.getElementById('spectra').appendChild(d)
+      }
+
+      data = response.spectra
+
+      console.log(data)
+
+      ShowSpectrum(0)
+      UpdateSelMas()
+    },
+    error: function (error) {
+      // Show that the file successfully uploaded
+      document.getElementById('onload').className = 'hide'
+      console.log(error)
+      document.getElementById('errormsg').innerHTML = error.responseText
+
+      document.getElementById('preprocess').className = 'hide'
+      document.getElementById('onpredict').className = 'hide'
+      document.getElementById('preds').className = 'hide'
+      document.getElementById('onupload').className = 'hide'
+
+      document.getElementById('errormsg').className = 'appear'
+
+      setTimeout(function () {
+        document.getElementById('errormsg').className = 'hide'
+      }, 10000)
+      document.getElementById('dataset').value = ''
+    }
+  })
+}
+
+function RunPrediction () {
+  document.getElementById('preds').className = 'hide'
+  document.getElementById('onpredict').className = 'appear'
+
+  const formData = new FormData()
+
+  for (let i = 0; i < data.length; i++) {
+    data[i].wr = document.getElementById(`mas_fig${i + 1}`).value
+    data[i].include = document.getElementById(`select_${i + 1}`).checked
   }
 
-  form_data.append("data", JSON.stringify(data))
-  form_data.append("rl", document.getElementById("rangel").value);
-  form_data.append("rr", document.getElementById("ranger").value);
-  form_data.append("sens", document.getElementById("sens").value);
+  formData.append('data', JSON.stringify(data))
+  formData.append('rl', document.getElementById('rangel').value)
+  formData.append('rr', document.getElementById('ranger').value)
+  formData.append('sens', document.getElementById('sens').value)
+  formData.append('acqu2', document.getElementById('acqu2').checked)
+  formData.append('units', unit)
 
   if (predicting) {
-    console.log("Already running prediction!")
+    console.log('Already running prediction!')
   } else {
-    predicting = true;
+    predicting = true
     $.ajax({
-      url: "/run_prediction",
+      url: '/run_prediction',
       cache: false,
       contentType: false,
       processData: false,
-      data: form_data,
-      type: "POST",
-      success: function(response) {
+      data: formData,
+      type: 'POST',
+      success: function (response) {
+        preds = response.preds
 
-        predicting = false;
+        PlotPred(document.getElementById('final-pred'), predInd = preds.preds.length - 1)
 
-        preds = response.preds;
+        PlotPredAll(document.getElementById('final-pred-all-specs'), 0.1)
 
-        plot_pred(document.getElementById("final-pred"), pred_idx=preds.preds.length-1);
+        PlotPred(document.getElementById('evolving-pred'), predInd = 0)
 
-        plot_pred_all(document.getElementById("final-pred-all-specs"), 0.1);
+        document.getElementById('onpredict').className = 'hide'
+        setTimeout(function () {
+          document.getElementById('preds').className = 'appear'
+        }, 600)
 
-        plot_pred(document.getElementById("evolving-pred"), pred_idx=0);
+        predicting = false
 
-        document.getElementById("onpredict").className = "hide";
-        setTimeout(function() {
-          document.getElementById("preds").className = "appear";
-        }, 600);
-
-        var dl_data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(preds));
-        var dl_elem = document.getElementById("download");
-        dl_elem.setAttribute("href", dl_data);
-        dl_elem.setAttribute("download", "preds.json");
-
+        const dlData = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(preds))
+        const dlElem = document.getElementById('download')
+        dlElem.setAttribute('href', dlData)
+        dlElem.setAttribute('download', 'preds.json')
       },
-      error: function(error) {
-        predicting = false;
-        console.log(error);
+      error: function (error) {
+        predicting = false
+        console.log(error)
       }
-    });
+    })
   }
-
-
 }

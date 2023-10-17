@@ -51,22 +51,49 @@
     <div class="lds-dual-ring in-hiding"></div>
   </div>
 
+
+  <form class="hide" id="select-exp">
+    <h2>Select Expnos to load</h2>
+    <div class="load-params parameters" id="load-expnos"></div>
+    <h2>Select Procno to use</h2>
+    <div class="load-params parameters" id="load-procno"></div>
+
+    <div class="goto">
+      <input type="button" id="load-dataset" value="Load dataset" onclick="LoadDataset();"></input>
+    </div>
+
+  </form>
+
+  <div class="hide" id="onload">
+    <h2 class="in-hiding">Loading data...</h2>
+    <div class="lds-dual-ring in-hiding"></div>
+  </div>
+
   <form class="hide" id="preprocess">
 
     <h2>Select included spectra, chemical shift range and MAS rates</h2>
 
     <div class="parameters">
+      <label for="unit">Units:</label>
+      <input type="radio" id="unit-ppm" name="unit" value="ppm" checked onchange="UpdateUnits();">
+      <label for="unit-ppm">ppm</label>
+      <input type="radio" id="unit-hz" name="unit" value="Hz" onchange="UpdateUnits();">
+      <label for="unit-hz">Hz</label>
+      <br>
       <label for="rangel">Prediction chemical shift range</label>
-      <input type="number" class="numbers" id="rangel" value="20" onchange="change_spectrum(0);">
+      <input type="number" class="numbers" id="rangel" value="20" onchange="UpdateRange();">
       <span> - </span>
-      <input type="number" class="numbers" id="ranger" value="-5" onchange="change_spectrum(0);">
-      <span> ppm </span>
+      <input type="number" class="numbers" id="ranger" value="-5" onchange="UpdateRange();">
+      <span id="range-unit"> ppm </span>
       <br>
       <label for="mas-rangel">Prediction MAS rate range</label>
-      <input type="number" class="numbers" id="mas-rangel" value="30" min="0" onchange="update_sel_mas();">
+      <input type="number" class="numbers" id="mas-rangel" value="30" min="0" onchange="UpdateSelMas();">
       <span> - </span>
-      <input type="number" class="numbers" id="mas-ranger" value="100" min="0" onchange="update_sel_mas();">
+      <input type="number" class="numbers" id="mas-ranger" value="100" min="0" onchange="UpdateSelMas();">
       <span> kHz </span>
+      <br>
+      <label for="acqu2">Use F1 as x-axis </label>
+      <input type="checkbox" id="acqu2" name="acqu2" onchange="UpdateUnits();">
       <br>
       <label for="sens">Prediction sensitivity (recommended value: 1)</label>
       <input type="range" id="sens" value="1" min="0" max="10" step="0.1" oninput="this.nextElementSibling.value = this.value;">
@@ -74,12 +101,12 @@
     </div>
 
     <div class="spectra" id="spectra">
-      <a class="prev" onclick="change_spectrum(-1);">&#10094;</a>
-      <a class="next" onclick="change_spectrum(1);">&#10095;</a>
+      <a class="prev" onclick="ChangeSpectrum(-1);">&#10094;</a>
+      <a class="next" onclick="ChangeSpectrum(1);">&#10095;</a>
     </div>
 
     <div class="goto">
-      <input type="button" id="predict" value="Predict" onclick="run_prediction();"></input>
+      <input type="button" id="predict" value="Predict" onclick="RunPrediction();"></input>
     </div>
 
   </form>
@@ -95,8 +122,8 @@
       <div class="spectrum_fig" id="final-pred"></div>
       <div class="spectrum_fig" id="final-pred-all-specs"></div>
       <div class="evolving-pred">
-        <a class="prev" onclick="change_pred(-1);">&#10094;</a>
-        <a class="next" onclick="change_pred(1);">&#10095;</a>
+        <a class="prev" onclick="ChangePred(-1);">&#10094;</a>
+        <a class="next" onclick="ChangePred(1);">&#10095;</a>
         <div class="spectrum_fig" id="evolving-pred"></div>
       </div>
     </div>

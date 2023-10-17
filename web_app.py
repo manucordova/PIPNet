@@ -1,9 +1,10 @@
-##########################################################################################
-###                                                                                    ###
-###                                 PIPNet web version                                 ###
-###                  Author: Manuel Cordova (manuel.cordova@epfl.ch)                   ###
-###                                                                                    ###
-##########################################################################################
+###############################################################################
+#                                                                             #
+#                             PIPNet web version                              #
+#                            Author: Manuel Cordova                           #
+#                           Last edited: 2023-10-09                           #
+###############################################################################
+
 
 import flask as flk
 import werkzeug.utils as wk
@@ -20,8 +21,10 @@ import zipfile
 from pipnet import utils
 from pipnet import model
 
+# Initialize pytorch and model name
 torch.set_num_threads(os.cpu_count())
-model_name = "PIPNet_model"
+model_name_1D = "PIPNet_model"
+model_name_2D = "PIPNet2D_model"
 device = "cuda" if torch.cuda.is_available() else "cpu"
 debug = False
 
@@ -30,22 +33,44 @@ app = flk.Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "./tmp/"
 app.config["MAX_CONTENT_PATH"] = int(1e6)
 
+# Create temporary directory to store spectra
 if not os.path.exists("./tmp/"):
     os.mkdir("./tmp/")
 
 spectra = []
 
-# Load PIPNet model
-with open(f"trained_models/{model_name}/data_pars.json", "r") as F:
-    data_pars = json.load(F)
-with open(f"trained_models/{model_name}/model_pars.json", "r") as F:
-    model_pars = json.load(F)
+# Load 1D PIPNet model
+with open(f"trained_models/{model_name_1D}/data_pars.json", "r") as F:
+    data_pars_1D = json.load(F)
+with open(f"trained_models/{model_name_1D}/model_pars.json", "r") as F:
+    model_pars_1D = json.load(F)
 
-net = model.ConvLSTMEnsemble(**model_pars)
-net.load_state_dict(
-    torch.load(f"trained_models/{model_name}/network", map_location=torch.device(device))
+net_1D = model.ConvLSTMEnsemble(**model_pars_1D)
+net_1D.load_state_dict(
+    torch.load(
+        f"trained_models/{model_name_1D}/network",
+        map_location=torch.device(device)
+    )
 )
-net.eval()
+net_1D.eval()
+
+# Load 2D PIPNet model
+with open(f"trained_models/{model_name_2D}/data_pars.json", "r") as F:
+    data_pars_2D = json.load(F)
+with open(f"trained_models/{model_name_2D}/model_pars.json", "r") as F:
+    model_pars_2D = json.load(F)
+
+net_2D = model.ConvLSTMEnsemble(**model_pars_2D)
+net_2D.load_state_dict(
+    torch.load(
+        f"trained_models/{model_name_2D}/network",
+        map_location=torch.device(device)
+    )
+)
+net_2D.eval()
+
+data = {}
+
 
 # Homepage
 @app.route("/")
@@ -53,10 +78,125 @@ net.eval()
 def home():
     return flk.render_template("home.html")
 
+
 # Predict page
 @app.route("/predict")
 def predict():
     return flk.render_template("predict.html", spectra=spectra)
+
+
+# On dataset upload
+@app.route("/upload_dataset_old", methods=["POST"])
+def upload_dataset_old():
+
+    try:
+
+        if flk.request.method == "POST":
+
+            if "dataset" not in flk.request.files:
+
+                resp = flk.jsonify({"message": "No file in the request"})
+                resp.status_code = 400
+                return resp
+
+            # Save dataset locally
+            f = flk.request.files["dataset"]
+            path = wk.secure_filename(f.filename)
+            d = app.config["UPLOAD_FOLDER"]
+            d += str(np.random.random()).replace(".", "")
+            os.mkdir(d)
+            dataset = os.path.join(d, path)
+            f.save(dataset)
+            with zipfile.ZipFile(dataset, "r") as zip_ref:
+                zip_ref.extractall(d)
+            data_path = dataset.split(".zip")[0] + "/"
+
+            # TODO: Determine if dataset is 1D or 2D
+
+            # TODO: Check which expnos exist, select the desired ones
+            # and then extract spectra.
+
+            # Extract spectra from directory
+            ppm, hz, ws, xrs, xis, titles, msg = utils.extract_1d_dataset(
+                data_path,
+                1,
+                1000,
+                load_imag=data_pars_1D["encode_imag"],
+                bypass_errors=True
+            )
+
+            print(msg)
+
+            ppm2, hz2, _, _, _, _, msg2 = utils.extract_1d_dataset(
+                data_path,
+                1,
+                1000,
+                load_imag=data_pars_1D["encode_imag"],
+                use_acqu2s=True,
+                bypass_errors=True
+            )
+
+            if "ERROR" in msg2:
+                ppm2 = []
+                hz2 = []
+            else:
+                ppm2 = ppm2.tolist()
+                hz2 = hz2.tolist()
+
+            print(msg)
+            print(ppm2)
+            print(hz2)
+            print(msg2)
+
+            if "ERROR" in msg:
+                resp = flk.jsonify({
+                    "message": f"Could not upload dataset.\n{msg}"
+                })
+
+            # Normalize spectra for visualization
+            norm = np.sum(xrs, axis=1)
+            xrs_plot = xrs / norm[:, np.newaxis]
+            xis_plot = xis.copy()
+            if None in xis_plot:
+                xis_plot = np.zeros_like(xrs)
+            xis_plot /= norm[:, np.newaxis]
+
+            spectra = []
+            for i, (w, xr, xi, title) in enumerate(zip(
+                ws,
+                xrs_plot,
+                xis_plot,
+                titles
+            )):
+                fig = px.line(x=ppm, y=xr)
+                fig.update_layout({"plot_bgcolor": "rgba(0,0,0,0)"})
+                spectra.append(
+                    {
+                        "ppm": ppm.tolist(),
+                        "Hz": hz.tolist(),
+                        "yr": xr.tolist(),
+                        "yi": xi.tolist(),
+                        "plot": json.dumps(
+                            fig,
+                            cls=plotly.utils.PlotlyJSONEncoder
+                        ),
+                        "wr": int(w / 1000),
+                        "num": i+1,
+                        "title": title,
+                    }
+                )
+
+    except Exception as err:
+        resp = flk.jsonify({
+            "message": f"Could not upload dataset: {err}"
+        })
+        resp.status_code = 500
+        return resp
+
+    return flk.jsonify(
+        spectra=spectra
+    )
+
 
 # On dataset upload
 @app.route("/upload_dataset", methods=["POST"])
@@ -72,49 +212,157 @@ def upload_dataset():
                 resp.status_code = 400
                 return resp
 
-            # Save dataset locally            
+            # Save dataset locally
             f = flk.request.files["dataset"]
             path = wk.secure_filename(f.filename)
-            d = app.config["UPLOAD_FOLDER"] + str(np.random.random()).replace(".", "")
+            d = app.config["UPLOAD_FOLDER"]
+            d += str(np.random.random()).replace(".", "")
             os.mkdir(d)
             dataset = os.path.join(d, path)
             f.save(dataset)
             with zipfile.ZipFile(dataset, "r") as zip_ref:
                 zip_ref.extractall(d)
-            
-            # Extract spectra from directory
-            ppm, _, ws, xrs, xis, titles = utils.extract_1d_dataset(dataset.split(".zip")[0] + "/", 1, 1000, return_titles=True)
+            data_path = dataset.split(".zip")[0] + "/"
+
+            # Get all expnos and procnos
+            procnos = {}
+            are_2d = {}
+            msg = ""
+
+            for expno in os.listdir(data_path):
+                d = data_path + expno + "/"
+                if expno.isnumeric() and os.path.isdir(d):
+                    procnos[expno], this_msg = utils.get_procnos(
+                        d,
+                        bypass_errors=True
+                    )
+                    msg += this_msg
+                    for procno in procnos[expno]:
+                        are_2d[f"{expno}-{procno}"], this_msg = utils.is_2D(
+                            d,
+                            procno=procno,
+                            bypass_errors=True
+                        )
+                        msg += this_msg
+
+            data["data_path"] = data_path
+
+    except Exception as err:
+        resp = flk.jsonify({
+                "message": f"Could not upload dataset: {err}"
+            })
+        resp.status_code = 500
+        return resp
+
+    return flk.jsonify(
+        params={
+            "procnos": procnos,
+            "are_2d": are_2d
+        }
+    )
+
+
+@app.route("/load_dataset", methods=["POST"])
+def load_dataset():
+
+    # TODO
+    try:
+
+        if flk.request.method == "POST":
+            print(flk.request.form)
+
+            expnos = list(map(int, flk.request.form["expnos"].split(",")))
+            expnos = sorted(expnos)
+            procno = flk.request.form["procno"].split("-")[-1]
+
+            ppm, hz, ws, xrs, xis, titles, msg = utils.extract_1d_dataset(
+                data["data_path"],
+                expnos=expnos,
+                procno=procno,
+                load_imag=data_pars_1D["encode_imag"],
+                bypass_errors=True
+            )
+
+            print(msg)
+
+            (
+                ppm2,
+                hz2,
+                _,
+                _,
+                _,
+                _,
+                msg2
+            ) = utils.extract_1d_dataset(
+                data["data_path"],
+                expnos=expnos,
+                procno=procno,
+                load_imag=data_pars_1D["encode_imag"],
+                use_acqu2s=True,
+                bypass_errors=True
+            )
+
+            if "ERROR" in msg2:
+                ppm2 = []
+                hz2 = []
+            else:
+                print(ppm.shape, ppm2.shape)
+                ppm2 = ppm2.tolist()
+                hz2 = hz2.tolist()
+
+            if "ERROR" in msg:
+                resp = flk.jsonify({
+                    "message": f"Could not upload dataset.\n{msg}"
+                })
 
             # Normalize spectra for visualization
             norm = np.sum(xrs, axis=1)
-            xrs /= norm[:, np.newaxis]
-            xis /= norm[:, np.newaxis]
+            xrs_plot = xrs / norm[:, np.newaxis]
+            xis_plot = xis.copy()
+            if None in xis_plot:
+                xis_plot = np.zeros_like(xrs)
+            xis_plot /= norm[:, np.newaxis]
 
             spectra = []
-            for i, (w, xr, xi, title) in enumerate(zip(ws, xrs, xis, titles)):
+            for i, (w, xr, xi, title) in enumerate(zip(
+                ws,
+                xrs_plot,
+                xis_plot,
+                titles
+            )):
                 fig = px.line(x=ppm, y=xr)
                 fig.update_layout({"plot_bgcolor": "rgba(0,0,0,0)"})
                 spectra.append(
                     {
-                        "x": ppm.tolist(),
+                        "ppm": ppm.tolist(),
+                        "ppm2": ppm2,
+                        "Hz": hz.tolist(),
+                        "Hz2": hz2,
                         "yr": xr.tolist(),
                         "yi": xi.tolist(),
-                        "plot": json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder),
+                        "plot": json.dumps(
+                            fig,
+                            cls=plotly.utils.PlotlyJSONEncoder
+                        ),
                         "wr": int(w / 1000),
                         "num": i+1,
                         "title": title,
                     }
                 )
+            data["spectra"] = spectra
 
-    except:
-        resp = flk.jsonify({"message": "Could not upload dataset"})
+    except Exception as err:
+        resp = flk.jsonify({
+                "message": f"Could not load dataset: {err}"
+            })
         resp.status_code = 500
         return resp
-    
+
     return flk.jsonify(
         spectra=spectra
     )
-    
+
+
 # On running prediction
 @app.route("/run_prediction", methods=["POST"])
 def run_prediction():
@@ -126,6 +374,11 @@ def run_prediction():
         rl = float(flk.request.form["rl"])
         rr = float(flk.request.form["rr"])
         sens = float(flk.request.form["sens"])
+        acqu2 = flk.request.form["acqu2"] == "true"
+        unit = flk.request.form["units"]
+
+        print(unit)
+        print(acqu2)
 
     # Load data
     xr = []
@@ -136,38 +389,65 @@ def run_prediction():
             xr.append(d["yr"])
             xi.append(d["yi"])
             ws.append(float(d["wr"])*1000)
-    
-    ppm = np.array(d["x"])
+
+    if unit.endswith("2"):
+        ppm = np.array(d["ppm2"])
+        hz = np.array(d["Hz2"])
+
+    else:
+        ppm = np.array(d["ppm"])
+        hz = np.array(d["Hz"])
+
     xr = np.array(xr)
     xi = np.array(xi)
     ws = np.array(ws)
-
-    # Select spectral range
-    r0 = min(rl, rr)
-    r1 = max(rl, rr)
-    inds = np.where(np.logical_and(ppm >= r0, ppm <= r1))[0]
-    ppm = ppm[inds]
-    xr = xr[:, inds]
-    xi = xi[:, inds]
+    x_range = [rl, rr]
 
     # Perform prediction
-    X = utils.prepare_1d_input(xr, ws, data_pars=data_pars, xi=xi, xmax=sens/2.)
+    if unit.startswith("ppm"):
+        ppm_pred, hz_pred, X, msg = utils.prepare_1d_input(
+            xr,
+            ppm,
+            x_range,
+            ws,
+            data_pars=data_pars_1D,
+            xi=xi,
+            x_other=hz,
+            xmax=sens/2.
+        )
+    else:
+        hz_pred, ppm_pred, X, msg = utils.prepare_1d_input(
+            xr,
+            hz,
+            x_range,
+            ws,
+            data_pars=data_pars_1D,
+            xi=xi,
+            x_other=ppm,
+            xmax=sens/2.
+        )
+
     with torch.no_grad():
-        y_pred, y_std, ys = net(X)
+        y_pred, y_std, ys = net_1D(X)
     y_pred = y_pred[0].numpy()
     y_std = y_std[0].numpy()
     ys = ys[:, 0].numpy()
-    
+
+    if hz_pred is None:
+        hz_pred = np.array([])
+
     return flk.jsonify(
         preds={
-            "x": ppm.tolist(),
-            "specs": xr.tolist(),
+            "ppm": ppm_pred.tolist(),
+            "Hz": hz_pred.tolist(),
+            "specs": X[0, :, 0, :].tolist(),
             "wrs": (ws/1000.).tolist(),
             "preds": y_pred.tolist(),
             "err": y_std.tolist(),
             "all": ys.tolist(),
         }
     )
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8008, debug=debug)

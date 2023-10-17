@@ -271,13 +271,17 @@ input[type="checkbox"] {
   top: 50px;
 }
 
+input[type="checkbox"][disabled] {
+    filter: invert(50%) hue-rotate(0deg) brightness(1.2);
+  }
+
 input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
 input[type=number] {
-  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 input[type=button] {
