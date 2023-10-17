@@ -86,119 +86,6 @@ def predict():
 
 
 # On dataset upload
-@app.route("/upload_dataset_old", methods=["POST"])
-def upload_dataset_old():
-
-    try:
-
-        if flk.request.method == "POST":
-
-            if "dataset" not in flk.request.files:
-
-                resp = flk.jsonify({"message": "No file in the request"})
-                resp.status_code = 400
-                return resp
-
-            # Save dataset locally
-            f = flk.request.files["dataset"]
-            path = wk.secure_filename(f.filename)
-            d = app.config["UPLOAD_FOLDER"]
-            d += str(np.random.random()).replace(".", "")
-            os.mkdir(d)
-            dataset = os.path.join(d, path)
-            f.save(dataset)
-            with zipfile.ZipFile(dataset, "r") as zip_ref:
-                zip_ref.extractall(d)
-            data_path = dataset.split(".zip")[0] + "/"
-
-            # TODO: Determine if dataset is 1D or 2D
-
-            # TODO: Check which expnos exist, select the desired ones
-            # and then extract spectra.
-
-            # Extract spectra from directory
-            ppm, hz, ws, xrs, xis, titles, msg = utils.extract_1d_dataset(
-                data_path,
-                1,
-                1000,
-                load_imag=data_pars_1D["encode_imag"],
-                bypass_errors=True
-            )
-
-            print(msg)
-
-            ppm2, hz2, _, _, _, _, msg2 = utils.extract_1d_dataset(
-                data_path,
-                1,
-                1000,
-                load_imag=data_pars_1D["encode_imag"],
-                use_acqu2s=True,
-                bypass_errors=True
-            )
-
-            if "ERROR" in msg2:
-                ppm2 = []
-                hz2 = []
-            else:
-                ppm2 = ppm2.tolist()
-                hz2 = hz2.tolist()
-
-            print(msg)
-            print(ppm2)
-            print(hz2)
-            print(msg2)
-
-            if "ERROR" in msg:
-                resp = flk.jsonify({
-                    "message": f"Could not upload dataset.\n{msg}"
-                })
-
-            # Normalize spectra for visualization
-            norm = np.sum(xrs, axis=1)
-            xrs_plot = xrs / norm[:, np.newaxis]
-            xis_plot = xis.copy()
-            if None in xis_plot:
-                xis_plot = np.zeros_like(xrs)
-            xis_plot /= norm[:, np.newaxis]
-
-            spectra = []
-            for i, (w, xr, xi, title) in enumerate(zip(
-                ws,
-                xrs_plot,
-                xis_plot,
-                titles
-            )):
-                fig = px.line(x=ppm, y=xr)
-                fig.update_layout({"plot_bgcolor": "rgba(0,0,0,0)"})
-                spectra.append(
-                    {
-                        "ppm": ppm.tolist(),
-                        "Hz": hz.tolist(),
-                        "yr": xr.tolist(),
-                        "yi": xi.tolist(),
-                        "plot": json.dumps(
-                            fig,
-                            cls=plotly.utils.PlotlyJSONEncoder
-                        ),
-                        "wr": int(w / 1000),
-                        "num": i+1,
-                        "title": title,
-                    }
-                )
-
-    except Exception as err:
-        resp = flk.jsonify({
-            "message": f"Could not upload dataset: {err}"
-        })
-        resp.status_code = 500
-        return resp
-
-    return flk.jsonify(
-        spectra=spectra
-    )
-
-
-# On dataset upload
 @app.route("/upload_dataset", methods=["POST"])
 def upload_dataset():
 
@@ -265,11 +152,9 @@ def upload_dataset():
 @app.route("/load_dataset", methods=["POST"])
 def load_dataset():
 
-    # TODO
     try:
 
         if flk.request.method == "POST":
-            print(flk.request.form)
 
             expnos = list(map(int, flk.request.form["expnos"].split(",")))
             expnos = sorted(expnos)
@@ -282,8 +167,6 @@ def load_dataset():
                 load_imag=data_pars_1D["encode_imag"],
                 bypass_errors=True
             )
-
-            print(msg)
 
             (
                 ppm2,
@@ -306,7 +189,6 @@ def load_dataset():
                 ppm2 = []
                 hz2 = []
             else:
-                print(ppm.shape, ppm2.shape)
                 ppm2 = ppm2.tolist()
                 hz2 = hz2.tolist()
 
@@ -376,9 +258,6 @@ def run_prediction():
         sens = float(flk.request.form["sens"])
         acqu2 = flk.request.form["acqu2"] == "true"
         unit = flk.request.form["units"]
-
-        print(unit)
-        print(acqu2)
 
     # Load data
     xr = []
