@@ -1,26 +1,29 @@
-###########################################################################
-###                               PIPNet                                ###
-###                          Model definition                           ###
-###                        Author: Manuel Cordova                       ###
-###       Adapted from https://github.com/ndrplz/ConvLSTM_pytorch       ###
-###                       Last edited: 2022-09-23                       ###
-###########################################################################
+###############################################################################
+#                                   PIPNet                                    #
+#                              Model definition                               #
+#                            Author: Manuel Cordova                           #
+#           Adapted from https://github.com/ndrplz/ConvLSTM_pytorch           #
+#                           Last edited: 2022-09-23                           #
+###############################################################################
 
-import numpy as np
 import torch
 import torch.nn as nn
 
 
-
 def get_act(act):
-    """
-    Get an activation function from its name
+    """Get an activation function from its name.
 
-    Input:  - act       Activation function name
+    Parameters
+    ----------
+    act : str
+        Activation function name.
 
-    Output: - act_fun   Activation function
+    Returns
+    -------
+    act_fun : Callable
+        Activation function.
     """
-    
+
     act = act.lower()
 
     if act == "linear":
@@ -35,20 +38,18 @@ def get_act(act):
         return nn.Tanh()
     if act == "selu":
         return nn.SELU()
-    
+
     raise ValueError(f"Unknown activation function: {act}")
 
 
-
-###########################################################################
-###                          Model definition                           ###
-###########################################################################
-
+###############################################################################
+#                              Model definition                               #
+###############################################################################
 
 
 class ConvLSTMCell(nn.Module):
-    """
-    ConvLSTM cell.
+    """ConvLSTM cell.
+
     Parameters
     ----------
     input_dim: int
@@ -60,11 +61,11 @@ class ConvLSTMCell(nn.Module):
     bias: bool
         Whether or not to add the bias.
     ndim: int
-        Number of dimensions
+        Number of dimensions.
     batch_norm: bool
-        Whether or not to apply batch normalization
+        Whether or not to apply batch normalization.
     independent: bool
-        Whether or not the output gate should be removed
+        Whether or not the output gate should be removed.
     """
     def __init__(
         self,
@@ -109,7 +110,12 @@ class ConvLSTMCell(nn.Module):
                     kernel_size=self.kernel_size,
                     bias=self.bias,
                 )
-                self.pad = (self.padding, self.padding, self.padding, self.padding)
+                self.pad = (
+                    self.padding,
+                    self.padding,
+                    self.padding,
+                    self.padding
+                )
         else:
             if ndim == 1:
                 self.conv = nn.Conv1d(
@@ -126,7 +132,12 @@ class ConvLSTMCell(nn.Module):
                     kernel_size=self.kernel_size,
                     bias=self.bias,
                 )
-                self.pad = (self.padding, self.padding, self.padding, self.padding)
+                self.pad = (
+                    self.padding,
+                    self.padding,
+                    self.padding,
+                    self.padding
+                )
 
         # Initialize batch normalization
         if self.batch_norm:
@@ -148,12 +159,19 @@ class ConvLSTMCell(nn.Module):
         else:
             self.bn = nn.Identity()
             self.bn_out = nn.Identity()
-        
+
         return
 
-
-
     def forward(self, input_tensor, cur_state):
+        """Forward pass definition.
+
+        Parameters
+        ----------
+        input_tensor : torch Tensor
+            Input tensor.
+        cur_state : torch Tensor
+            Current cell state.
+        """
 
         h_cur, c_cur = cur_state
 
@@ -165,11 +183,19 @@ class ConvLSTMCell(nn.Module):
         combined_conv = self.bn(combined_conv)
 
         if self.independent:
-            cc_i, cc_f, cc_g = torch.split(combined_conv, self.hidden_dim, dim=1)
+            cc_i, cc_f, cc_g = torch.split(
+                combined_conv,
+                self.hidden_dim,
+                dim=1
+            )
             o = 1.
 
         else:
-            cc_i, cc_f, cc_o, cc_g = torch.split(combined_conv, self.hidden_dim, dim=1)
+            cc_i, cc_f, cc_o, cc_g = torch.split(
+                combined_conv,
+                self.hidden_dim,
+                dim=1
+            )
             o = torch.sigmoid(cc_o)
 
         i = torch.sigmoid(cc_i)
@@ -181,9 +207,23 @@ class ConvLSTMCell(nn.Module):
 
         return h_next, c_next
 
-
-
     def init_hidden(self, batch_size, size):
+        """Initialize the hidden cell state.
+
+        Parameters
+        ----------
+        batch_size : int
+            Batch size.
+        size : int or list
+            Size of the spectrum.
+
+        Returns
+        -------
+        h : torch Tensor
+            Hidden cell state.
+        c : torch Tensor
+            Hidden cell state.
+        """
 
         if self.ndim == 1:
             h = torch.zeros(
@@ -200,24 +240,41 @@ class ConvLSTMCell(nn.Module):
                 size[1],
                 device=self.conv.weight.device
             )
-        
+
         return h, h.clone()
 
 
-
 class ConvLSTM(nn.Module):
-    """
-    Convolutional LSTM model
-    Parameters:
-        input_dim: Number of channels in input
-        hidden_dim: Number of hidden channels
-        kernel_size: Size of kernel in convolutions
-        num_layers: Number of LSTM layers stacked on each other
-        bias: Bias or no bias in Convolution
-        return_all_layers: Return the list of computations for all layers
-        output_kernel_size: Size of output kernel
-        output_act: Output activation function
-        noise: Amount of noise to add to the input
+    """Convolutional LSTM model.
+
+    Parameters
+    ----------
+    input_dim : int
+        Number of channels in input.
+    hidden_dim : int
+        Number of hidden channels.
+    kernel_size : int
+        Size of kernel in convolutions.
+    num_layers : int
+        Number of LSTM layers stacked on each other.
+    bias : bool
+        Bias or no bias in Convolution.
+    output_bias : bool
+        Bias or no bias in the output convolution.
+    batch_norm : bool
+        Batch normalization or no batch normalization.
+    ndim : int
+        Number of dimensions of the input spectra (1 or 2).
+    independent : bool
+        Whether or not the output gate should be removed.
+    return_all_layers : bool
+        Return the list of computations for all layers.
+    output_kernel_size : int
+        Size of output kernel.
+    output_act : str
+        Output activation function name.
+    noise : int
+        Amount of noise to add to the input.
     """
 
     def __init__(
@@ -242,7 +299,8 @@ class ConvLSTM(nn.Module):
         if ndim not in [1, 2]:
             raise ValueError(f"Invalid number of dimensions: {ndim}")
 
-        # Make sure that both `kernel_size` and `hidden_dim` are lists having len == num_layers
+        # Make sure that both `kernel_size` and `hidden_dim`
+        # are lists having len == num_layers
         kernel_size = self._extend_for_multilayer(kernel_size, num_layers)
         hidden_dim = self._extend_for_multilayer(hidden_dim, num_layers)
         if not len(kernel_size) == len(hidden_dim) == num_layers:
@@ -266,7 +324,8 @@ class ConvLSTM(nn.Module):
         cell_list = []
         for i in range(0, self.num_layers):
             cur_input_dim = (
-                self.input_dim * self.batch_input if i == 0 else self.hidden_dim[i - 1]
+                self.input_dim * self.batch_input if i == 0
+                else self.hidden_dim[i - 1]
             )
 
             cell_list.append(
@@ -288,7 +347,6 @@ class ConvLSTM(nn.Module):
                 in_channels=self.hidden_dim[-1],
                 out_channels=1,
                 kernel_size=self.output_kernel_size,
-                #padding=self.output_padding,
                 bias=self.output_bias,
             )
             self.out_pad = (self.output_padding, self.output_padding)
@@ -297,16 +355,18 @@ class ConvLSTM(nn.Module):
                 in_channels=self.hidden_dim[-1],
                 out_channels=1,
                 kernel_size=self.output_kernel_size,
-                #padding=self.output_padding,
                 bias=self.output_bias,
             )
-            self.out_pad = (self.output_padding, self.output_padding, self.output_padding, self.output_padding)
+            self.out_pad = (
+                self.output_padding,
+                self.output_padding,
+                self.output_padding,
+                self.output_padding
+            )
 
         self.output_act = get_act(output_act)
 
         return
-
-
 
     def _batch_input(self, input_tensor):
         # Batch input layers
@@ -315,23 +375,34 @@ class ConvLSTM(nn.Module):
             if i >= self.batch_input - 1:
                 tmp_input = []
                 for j in reversed(range(self.batch_input)):
-                    tmp_input.append(torch.unsqueeze(input_tensor[:, i - j], 1))
+                    tmp_input.append(
+                        torch.unsqueeze(
+                            input_tensor[:, i - j], 1
+                        )
+                    )
                 cur_layer_input.append(torch.cat(tmp_input, dim=2))
         return torch.cat(cur_layer_input, dim=1)
 
-
-
     def forward(self, input_tensor, hidden_state=None, repeat_first_input=1):
-        """
+        """Forward pass definition.
+
         Parameters
         ----------
-        input_tensor: todo
+        input_tensor : torch Tensor
             4-D Tensor of shape (b, t, c, s)
-        hidden_state: todo
-            None. todo implement stateful
+        hidden_state : None or torch Tensor
+            Previous hidden state.
+        repeat_first_input : int
+            Number of times to repeat the first input.
+
         Returns
         -------
-        last_state_list, layer_output
+        output : torch Tensor
+            Output prediction.
+        layer_output_list : list
+            List of the output of each layer.
+        last_state_list : list
+            List of hidden state of each layer at the end of the process.
         """
 
         if self.ndim == 1:
@@ -339,12 +410,15 @@ class ConvLSTM(nn.Module):
             # Initialize hidden state
             if hidden_state is None:
                 hidden_state = self._init_hidden(batch_size=b, image_size=s)
-        
+
         elif self.ndim == 2:
             b, _, _, sx, sy = input_tensor.size()
             # Initialize hidden state
             if hidden_state is None:
-                hidden_state = self._init_hidden(batch_size=b, image_size=[sx, sy])        
+                hidden_state = self._init_hidden(
+                    batch_size=b,
+                    image_size=[sx, sy]
+                )
 
         layer_output_list = []
         last_state_list = []
@@ -373,19 +447,30 @@ class ConvLSTM(nn.Module):
                     )
                     output_inner.append(h)
 
-                    if self.return_all_layers and layer_idx == self.num_layers - 1:
-                        output = nn.functional.pad(h, self.out_pad, mode="replicate")
+                    if (
+                        self.return_all_layers and
+                        layer_idx == self.num_layers - 1
+                    ):
+                        output = nn.functional.pad(
+                            h,
+                            self.out_pad,
+                            mode="replicate"
+                        )
                         output = self.output_conv(output)
                         output = self.output_act(output)
                         output_list.append(output)
-                
+
                 h, c = self.cell_list[layer_idx](
                     input_tensor=cur_layer_input[:, t], cur_state=[h, c]
                 )
                 output_inner.append(h)
 
                 if self.return_all_layers and layer_idx == self.num_layers - 1:
-                    output = nn.functional.pad(h, self.out_pad, mode="replicate")
+                    output = nn.functional.pad(
+                        h,
+                        self.out_pad,
+                        mode="replicate"
+                    )
                     output = self.output_conv(output)
                     output = self.output_act(output)
                     output_list.append(output)
@@ -405,15 +490,16 @@ class ConvLSTM(nn.Module):
 
         return output, layer_output_list, last_state_list
 
-
-
     def _init_hidden(self, batch_size, image_size):
         init_states = []
         for i in range(self.num_layers):
-            init_states.append(self.cell_list[i].init_hidden(batch_size, image_size))
+            init_states.append(
+                self.cell_list[i].init_hidden(
+                    batch_size,
+                    image_size
+                )
+            )
         return init_states
-
-
 
     @staticmethod
     def _extend_for_multilayer(param, num_layers):
@@ -422,30 +508,41 @@ class ConvLSTM(nn.Module):
         return param
 
 
-
 class ConvLSTMEnsemble(nn.Module):
+    """Convolutional LSTM ensemble model.
 
-    """
-    Parameters:
-        input_dim: Number of channels in input
-        hidden_dim: Number of hidden channels
-        kernel_size: Size of kernel in convolutions
-        num_layers: Number of LSTM layers stacked on each other
-        bias: Bias or no bias in Convolution
-        return_all_layers: Return the list of computations for all layers
-        Note: Will do same padding.
-    Input:
-        A tensor of size B, T, C, H, W or T, B, C, H, W
-    Output:
-        A tuple of two lists of length num_layers (or length 1 if return_all_layers is False).
-            0 - layer_output_list is the list of lists of length T of each output
-            1 - last_state_list is the list of last states
-                    each element of the list is a tuple (h, c) for hidden state and memory
-    Example:
-        >> x = torch.rand((32, 10, 64, 128, 128))
-        >> convlstm = ConvLSTM(64, 16, 3, 1, True, True, False)
-        >> _, last_states = convlstm(x)
-        >> h = last_states[0][0]  # 0 for layer index, 0 for h index
+    Parameters
+    ----------
+    input_dim : int
+        Number of channels in input.
+    n_models : int
+        Number of models in the ensemble.
+    hidden_dim : list
+        Number of hidden channels in each model.
+    kernel_size : list
+        Size of kernel in convolutions in each model.
+    num_layers : int
+        Number of LSTM layers stacked on each other.
+    bias : bool
+        Bias or no bias in Convolution.
+    output_bias : bool
+        Bias or no bias in the output convolution.
+    return_all_layers : bool
+        Return the list of computations for all layers.
+    batch_norm : bool
+        Batch normalization or no batch normalization.
+    ndim : int
+        Number of dimensions of the input spectra (1 or 2).
+    independent : bool
+        Whether or not the output gate should be removed.
+    output_kernel_size : int
+        Size of output kernel.
+    output_act : str
+        Output activation function name.
+    noise : int
+        Amount of noise to add to the input.
+    invert : bool
+        Invert the order of the spectra.
     """
 
     def __init__(
@@ -513,19 +610,24 @@ class ConvLSTMEnsemble(nn.Module):
 
         return
 
-
-
     def forward(self, input_tensor, repeat_first_input=1):
-        """
+        """Forward pass.
+
         Parameters
         ----------
-        input_tensor: todo
+        input_tensor : torch Tensor
             4-D Tensor of shape (b, t, c, s)
-        hidden_state: todo
-            None. todo implement stateful
+        hidden_state : None or torch Tensor
+            Previous hidden state.
+        repeat_first_input : int
+            Number of times to repeat the first input.
+
         Returns
         -------
-        last_state_list, layer_output
+        mean_preds : torch Tensor
+            Mean of the predictions.
+        std_preds : torch Tensor
+            Standard deviation of the predictions.
         """
 
         if self.inv:
@@ -536,10 +638,15 @@ class ConvLSTMEnsemble(nn.Module):
             if self.noise > 0.:
                 X = input_tensor.clone()
                 # Add noise only to the spectrum, not to the MAS encoding
-                X[:, :, :-1] += torch.randn_like(input_tensor[:, :, :-1]) * self.noise
+                X[:, :, :-1] += torch.randn_like(
+                    input_tensor[:, :, :-1]
+                ) * self.noise
                 y, _, _ = net(X, repeat_first_input=repeat_first_input)
             else:
-                y, _, _ = net(input_tensor, repeat_first_input=repeat_first_input)
+                y, _, _ = net(
+                    input_tensor,
+                    repeat_first_input=repeat_first_input
+                )
             ys.append(torch.unsqueeze(y.clone(), 0))
 
         ys = torch.cat(ys, dim=0)
@@ -547,16 +654,16 @@ class ConvLSTMEnsemble(nn.Module):
         return torch.mean(ys, dim=0), torch.std(ys, dim=0), ys
 
 
-
 ###########################################################################
-###                      Loss function definition                       ###
+#                        Loss function definition                         #
 ###########################################################################
-
 
 
 class PIPLoss(nn.Module):
-    """
-    PIPNet custom loss
+    """PIPNet custom loss.
+
+    Parameters
+    ----------
     """
 
     def __init__(

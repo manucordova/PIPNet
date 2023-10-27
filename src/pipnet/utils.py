@@ -358,10 +358,20 @@ def get_chemical_shifts(td, sw, n_pts, offset, sf, bypass_errors=False):
 
     msg = ""
 
+    print(td)
+    print(sw)
+    print(n_pts)
+    print(offset)
+    print(sf)
+
     try:
         aq = td / (2 * sw)
         hz = offset * sf - np.arange(n_pts) / (2 * aq * n_pts / td)
         ppm = hz / sf
+
+        print(aq)
+        print(hz)
+        print(ppm)
 
     except Exception:
         msg = "Could not construct array of chemical shifts!\n"
@@ -573,8 +583,8 @@ def extract_1d_dataset(
     if expnos is None:
         expnos = np.arange(expno_init, expno_final+1)
 
-    for d in os.listdir(path):
-        if d.isnumeric() and int(d) in expnos:
+    for expno in expnos:
+        if os.path.isdir(f"{path}{expno}/"):
             (
                 xr,
                 xi,
@@ -584,7 +594,7 @@ def extract_1d_dataset(
                 title,
                 this_msg
             ) = load_1d_topspin_spectrum(
-                f"{path}{d}/",
+                f"{path}{expno}/",
                 load_imag=load_imag,
                 procno=procno,
                 use_acqu2s=use_acqu2s,
@@ -752,7 +762,7 @@ def plot_1d_iso_prediction(
         xvals = np.arange(X.shape[-1])
     if x_trg is None:
         x_trg = xvals
-    
+
     if all_steps:
         nsteps = y_pred.shape[0]
     else:
@@ -975,7 +985,6 @@ def extract_1d_linewidths(x, y, x_ranges):
     return lws, pks
 
 
-
 def get_relative_1d_integrals(x, y, regions):
     """
     Compare the relative integrals in different regions of two spectra
@@ -997,248 +1006,505 @@ def get_relative_1d_integrals(x, y, regions):
         ir = max(i1, i2)
 
         integrals[i] = np.sum(y[il:ir])
-        
+
     integrals /= np.sum(integrals)
 
     return integrals
 
 
-
-###########################################################################
-###                            2D functions                             ###
-###########################################################################
-
+###############################################################################
+#                                2D functions                                 #
+###############################################################################
 
 
-def load_2d_topspin_spectrum(path, return_title=False, load_imag=False):
+def load_2d_data(path, procno=1, load_imag=True, dtype=np.int32):
+    """Load the data contained in a 2D spectrum.
+
+    Parameters
+    ----------
+    path : str
+        Path to the Topspin dataset.
+    procno : int, default=1
+        procno of the data to load.
+    load_imag : bool, default=False
+        Whether or not to load the imaginary part of the spectrum.
+    dtype : type or str, default=np.int32
+        Type to read.
+
+    Returns
+    -------
+    drr : Numpy ndarray
+        Real-real part of the spectrum.
+    dri : Numpy ndarray
+        Real-imaginary part of the spectrum.
+    dir : Numpy ndarray
+        Imaginary-real part of the spectrum.
+    dii : Numpy ndarray or None
+        Imaginary-imaginary part of the spectrum.
+    msg : str
+        Warning/error message.
     """
-    Load a 2D spectrum from Topspin and retrieve the MAS rate
-    The MAS rate is first looked for in the title of the experiment,
-    and if it is not found there the MASR variable in the acquisition
-    parameters will be searched.
 
-    Input:      - path          Path to the Topspin directory
-                - return_title  Return the title of the spectrum
-                - load_imag     Load the imaginary part of the spectrum
+    frr = f"{path}pdata/{procno}/2rr"
+    fri = f"{path}pdata/{procno}/2ri"
+    fir = f"{path}pdata/{procno}/2ir"
+    fii = f"{path}pdata/{procno}/2ii"
 
-    Outputs:    - drr           Purely real part of the spectrum
-                - dri           Mixed part of the spectrum
-                - dir           Mixed part of the spectrum
-                - dii           Purely imaginary part of the spectrum
-                - wr            MAS rate (-1 if the rate is not found)
-                - ppm_x         Array of chemical shift values in the x-axis of the spectrum
-                - ppm_y         Array of chemical shift values in the y-axis of the spectrum
-                - hz_x          Array of frequency values in the x-axis of the spectrum
-                - hz_y          Array of frequency values in the y-axis of the spectrum
-                - title         Title of the spectrum
+    msg = ""
+
+    with open(frr, "rb") as F:
+        drr = np.fromfile(F, dtype=dtype).astype(float)
+
+    dri = None
+    dir = None
+    dii = None
+    if load_imag:
+        if os.path.exists(fri):
+            with open(fri, "rb") as F:
+                dri = np.fromfile(F, dtype=dtype).astype(float)
+        if os.path.exists(fir):
+            with open(fir, "rb") as F:
+                dir = np.fromfile(F, dtype=dtype).astype(float)
+        if os.path.exists(fii):
+            with open(fii, "rb") as F:
+                dii = np.fromfile(F, dtype=dtype).astype(float)
+
+    if load_imag and (dri is None or dir is None or dii is None):
+        msg = "WARNING: No imaginary part found!\n"
+
+    return drr, dri, dir, dii, msg
+
+
+def load_2d_topspin_spectrum(
+    path,
+    load_imag=True,
+    procno=1,
+    bypass_errors=False,
+    dtype=np.int32
+):
+    """Load a 2D Topspin spectrum.
+
+    Parameters
+    ----------
+    path : str
+        Path to the Topspin directory.
+    load_imag : bool, default=True
+        Load the imaginary part of the spectrum.
+    procno : int, default=1
+        Procno to load.
+    bypass_errors : bool, default=False
+        Bypass errors and continue execution anyway.
+    dtype : type or str, default=np.int32
+        Type to read.
+
+    Returns
+    -------
+    drr : Numpy ndarray
+        Real-real part of the spectrum.
+    dri : Numpy ndarray
+        Real-imaginary part of the spectrum.
+    dir : Numpy ndarray
+        Imaginary-real part of the spectrum.
+    dii : Numpy ndarray
+        Imaginary-imaginary part of the spectrum.
+        Will be zeros if no imaginary part is loaded.
+    wr : float
+        MAS rate (-1 if the rate is not found).
+    ppm_x : Numpy ndarray
+        Array of chemical shift values in F2.
+    ppm_y : Numpy ndarray
+        Array of chemical shift values in F1.
+    hz_x : Numpy ndarray
+        Array of frequency values in F2.
+    hz_y : Numpy ndarray
+        Array of frequency values in F1.
+    title : str
+        Title of the spectrum.
+    msg : str
+        Warning/error message.
     """
-    
+
+    msg = ""
+
     if not path.endswith("/"):
         path += "/"
-    
-    if not os.path.exists(path):
-        raise ValueError(f"{path} not found!")
 
-    pd = f"{path}pdata/1/"
-    frr = pd + "2rr"
-    fri = pd + "2ri"
-    fir = pd + "2ir"
-    fii = pd + "2ii"
-    ti = pd + "title"
+    if not os.path.exists(path):
+        msg += f"ERROR: Topspin directory does not exist: {path}.\n"
+        if bypass_errors:
+            return (
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                msg
+            )
+
+        raise ValueError(msg)
+
+    pd = f"{path}pdata/{procno}/"
+    if not os.path.exists(pd):
+        msg += f"ERROR: procno {procno} does not exist"
+        msg += f" in this Topspin directory: {path}!\n"
+
+        if bypass_errors:
+            return None, None, None, None, None, None, msg
+
+        raise ValueError(msg)
 
     # Load spectrum
-    with open(frr, "rb") as F:
-        drr = np.fromfile(F, np.int32).astype(float)
-    if load_imag:
-        with open(fri, "rb") as F:
-            dri = np.fromfile(F, np.int32).astype(float)
-        with open(fir, "rb") as F:
-            dir = np.fromfile(F, np.int32).astype(float)
-        with open(fii, "rb") as F:
-            dii = np.fromfile(F, np.int32).astype(float)
-    else:
-        dri = None
-        dir = None
-        dii = None
-        
-    wr = -1.
-    # Get MAS rate from title
-    wr_found = False
-    with open(ti, "r") as F:
-        title = F.read()
-        lines = title.split("\n")
-    for l in lines:
-        if "KHZ" in l.upper():
-            wr = float(l.upper().split("KHZ")[0].split()[-1]) * 1000
-            wr_found = True
-        elif "HZ" in l.upper():
-            wr = float(l.upper().split("HZ")[0].split()[-1])
-            wr_found = True
+    drr, dri, dir, dii, this_msg = load_2d_data(
+        path,
+        procno=procno,
+        load_imag=load_imag,
+        dtype=dtype
+    )
+    msg += this_msg
+
+    if "ERROR" in msg:
+        return (
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            msg
+        )
+
+    # Get title and MAS rate
+    title, wr, this_msg = parse_title(
+        path,
+        procno=procno
+    )
+
+    msg += this_msg
+    if "ERROR" in msg:
+        return (
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            msg
+        )
 
     # Parse acquisition parameters
-    with open(f"{path}acqus", "r") as F:
-        lines = F.read().split("\n")
-    for l in lines:
-        if l.startswith("##$MASR") and not wr_found:
-            try:
-                wr = int(l.split("=")[1].strip())
-            except:
-                pass
-        if l.startswith("##$TD="):
-            TD_x = int(l.split("=")[1].strip())
-        if l.startswith("##$SW_h="):
-            SW_x = float(l.split("=")[1].strip())
-    
-    with open(f"{path}acqu2s", "r") as F:
-        lines = F.read().split("\n")
-    for l in lines:
-        if l.startswith("##$TD="):
-            TD_y = int(l.split("=")[1].strip())
-        if l.startswith("##$SW_h="):
-            SW_y = float(l.split("=")[1].strip())
+    td_x, sw_x, _wr, this_msg = parse_acqus(
+        path,
+        use_acqu2s=False,
+        bypass_errors=bypass_errors
+    )
+    msg += this_msg
+    if "ERROR" in msg:
+        return (
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            msg
+        )
+    if wr < 0. and _wr > 0.:
+        wr = _wr
+
+    td_y, sw_y, _wr, this_msg = parse_acqus(
+        path,
+        use_acqu2s=True,
+        bypass_errors=bypass_errors
+    )
+    msg += this_msg
+    if "ERROR" in msg:
+        return (
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            msg
+        )
+    if wr < 0. and _wr > 0.:
+        wr = _wr
+
+    if wr < 0.:
+        msg += f"WARNING: No MAS rate found for {pd}!\n"
 
     # Parse processing parameters
-    with open(f"{pd}procs", "r") as F:
-        lines = F.read().split("\n")
+    n_pts_x, offset_x, sf_x, this_msg = parse_procs(
+        pd,
+        use_proc2s=False,
+        bypass_errors=bypass_errors
+    )
+    msg += this_msg
+    if "ERROR" in msg:
+        return (
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            msg
+        )
 
-    for l in lines:
-        if l.startswith("##$SI="):
-            n_pts_x = int(l.split("=")[1].strip())
-        if l.startswith("##$OFFSET="):
-            offset_x = float(l.split("=")[1].strip())
-        if l.startswith("##$SF="):
-            SF_x = float(l.split("=")[1].strip())
+    n_pts_y, offset_y, sf_y, this_msg = parse_procs(
+        pd,
+        use_proc2s=True,
+        bypass_errors=bypass_errors
+    )
+    msg += this_msg
+    if "ERROR" in msg:
+        return (
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            msg
+        )
 
-    with open(f"{pd}proc2s", "r") as F:
-        lines = F.read().split("\n")
-
-    for l in lines:
-        if l.startswith("##$SI="):
-            n_pts_y = int(l.split("=")[1].strip())
-        if l.startswith("##$OFFSET="):
-            offset_y = float(l.split("=")[1].strip())
-        if l.startswith("##$SF="):
-            SF_y = float(l.split("=")[1].strip())
-            
     # Generate chemical shift and frequency arrays
-    AQ_x = TD_x / (2 * SW_x)
-    hz_x = offset_x * SF_x - np.arange(n_pts_x) / (2 * AQ_x * n_pts_x / TD_x)
-    ppm_x = hz_x / SF_x
+    ppm_x, hz_x, this_msg = get_chemical_shifts(
+        td_x,
+        sw_x,
+        n_pts_x,
+        offset_x,
+        sf_x
+    )
+    ppm_y, hz_y, this_msg = get_chemical_shifts(
+        td_y,
+        sw_y,
+        n_pts_y,
+        offset_y,
+        sf_y
+    )
 
-    AQ_y = TD_y / (2 * SW_y)
-    hz_y = offset_y * SF_y - np.arange(n_pts_y) / (2 * AQ_y * n_pts_y / TD_y)
-    ppm_y = hz_y / SF_y
+    drr = drr.reshape((n_pts_y, n_pts_x))
+    if dri is not None:
+        dri = dri.reshape((n_pts_y, n_pts_x))
+    if dir is not None:
+        dir = dir.reshape((n_pts_y, n_pts_x))
+    if dii is not None:
+        dii = dii.reshape((n_pts_y, n_pts_x))
 
-    if return_title:
-        return drr, dri, dir, dii, wr, ppm_x, ppm_y, hz_x, hz_y, title
-    else:
-        return drr, dri, dir, dii, wr, ppm_x, ppm_y, hz_x, hz_y
+    return drr, dri, dir, dii, wr, ppm_x, ppm_y, hz_x, hz_y, title, msg
 
 
+def extract_2d_dataset(
+    path,
+    expno_init=1,
+    expno_final=1000,
+    expnos=None,
+    load_imag=True,
+    procno=1,
+    bypass_errors=False
+):
+    """Extract a dataset of 2D spectra.
 
-def extract_2d_dataset(path, exp_init, exp_final, exps=None, return_titles=False, load_imag=False):
+    Parameters
+    ----------
+    path : str
+        Path to the dataset containing the Topspin directories.
+    expno_init : int, default=1
+        Initial expno to parse (inclusive).
+    expno_final : int, default=1000
+        Final expno to parse (inclusive).
+    expnos : array_like
+        Custom indices of expnos to parse. This will override the
+        `expno_init` and `expno_final` variables.
+    load_imag : bool, default=True
+        Load the imaginary part of the spectra.
+    procno : int, default=1
+        Procno to load.
+    bypass_errors : bool, default=False
+        Bypass errors and continue execution anyway.
+
+    Returns
+    -------
+    ppm_x : Numpy ndarray
+        Array of chemical shift values in F2.
+    ppm_y : Numpy ndarray
+        Array of chemical shift values in F1.
+    hz_x : Numpy ndarray
+        Array of frequency values in F2.
+    hz_y : Numpy ndarray
+        Array of frequency values in F1.
+    sorted_ws : Numpy ndarray
+        Sorted array of MAS rates.
+    sorted_X_rr : Numpy ndarray
+        Array of real-real parts of the spectra,
+        sorted by increasing MAS rates.
+    sorted_X_ri : Numpy ndarray
+        Array of real-imaginary parts of the spectra,
+        sorted by increasing MAS rates.
+    sorted_X_ir : Numpy ndarray
+        Array of imaginary-real parts of the spectra,
+        sorted by increasing MAS rates.
+    sorted_X_ii : Numpy ndarray
+        Array of imaginary-imaginary parts of the spectra,
+        sorted by increasing MAS rates.
+    msg : str
+        Warning/error message.
     """
-    Extract a vmas dataset of 1D spectra
 
-    Inputs:     - path              Path to the vmas dataset
-                - exp_init          Index of the first experiment (inclusive)
-                - exp_final         Index of the last experiment (inclusive)
-                - exps              Custom indices of all experiments
-                - return_titles     Return spectra titles
-                - load_imag         Load the imaginary part of the spectra
-
-    Outputs:    - ppm_x             Array of chemical shifts in the x-axis
-                - ppm_y             Array of chemical shifts in the y-axis
-                - hz_x              Array of frequencies in the x-axis
-                - hz_y              Array of frequencies in the y-axis
-                - sorted_ws         Array of MAS rates
-                - sorted_X_rr       Array of purely real parts of the spectra
-                - sorted_X_ri       Array of mixed parts of the spectra
-                - sorted_X_ir       Array of mixed parts of the spectra
-                - sorted_X_ii       Array of purely imaginary parts of the spectra
-                - sorted_titles     Array of titles of the spectra
-    """
-    
     if not path.endswith("/"):
         path += "/"
-    
-    if not os.path.exists(path):
-        raise ValueError(f"{path} not found!")
-    
+
+    ppm_x = None
+    ppm_y = None
+    hz_x = None
+    hz_y = None
     ws = []
     X_rr = []
     X_ri = []
     X_ir = []
     X_ii = []
     titles = []
+    msg = ""
 
-    if exps is None:
-        exps = np.arange(exp_init, exp_final+1)
-    
-    first = True
-    for d in exps:
-        if os.path.exists(f"{path}{d}/"):
-            if return_titles:
-                Xrr, Xri, Xir, Xii, wr, ppm_x, ppm_y, hz_x, hz_y, title = load_2d_topspin_spectrum(f"{path}{d}/", return_title=True, load_imag=load_imag)
-                titles.append(title)
-            else:
-                Xrr, Xri, Xir, Xii, wr, ppm_x, ppm_y, hz_x, hz_y = load_2d_topspin_spectrum(f"{path}{d}/", load_imag=load_imag)
-            
-            Xrr = Xrr.reshape(len(ppm_y), len(ppm_x))
-            if load_imag:
-                Xri = Xri.reshape(len(ppm_y), len(ppm_x))
-                Xir = Xir.reshape(len(ppm_y), len(ppm_x))
-                Xii = Xii.reshape(len(ppm_y), len(ppm_x))
+    if expnos is None:
+        expnos = np.arange(expno_init, expno_final+1)
 
-            if first:
-                first = False
-                ppm_x0 = ppm_x.copy()
-                ppm_y0 = ppm_y.copy()
-                hz_x0 = hz_x.copy()
-                hz_y0 = hz_y.copy()
-            else:
-                # TODO: ip.RegularGridInterpolator()
-                f = ip.interp2d(ppm_x, ppm_y, Xrr[::-1, ::-1])
-                Xrr = f(ppm_x0, ppm_y0)
-                if load_imag:
-                    f = ip.interp2d(ppm_x, ppm_y, Xri[::-1, ::-1])
-                    Xri = f(ppm_x0, ppm_y0)
-                    f = ip.interp2d(ppm_x, ppm_y, Xir[::-1, ::-1])
-                    Xir = f(ppm_x0, ppm_y0)
-                    f = ip.interp2d(ppm_x, ppm_y, Xii[::-1, ::-1])
-                    Xii = f(ppm_x0, ppm_y0)
+    for expno in expnos:
+        if os.path.isdir(f"{path}{expno}/"):
+            (
+                xrr,
+                xri,
+                xir,
+                xii,
+                wr,
+                this_ppm_x,
+                this_ppm_y,
+                this_hz_x,
+                this_hz_y,
+                title,
+                this_msg
+            ) = load_2d_topspin_spectrum(
+                f"{path}{expno}/",
+                load_imag=load_imag,
+                procno=procno,
+                bypass_errors=bypass_errors
+            )
+            msg += this_msg
 
-            X_rr.append(Xrr)
-            X_ri.append(Xri)
-            X_ir.append(Xir)
-            X_ii.append(Xii)
+            if ppm_x is None:
+                ppm_x = this_ppm_x
+                ppm_y = this_ppm_y
+                hz_x = this_hz_x
+                hz_y = this_hz_y
+
+                if ppm_x is not None:
+                    ppm_xx, ppm_yy = np.meshgrid(ppm_x, ppm_y)
+
+            elif this_ppm_x is not None:
+                if (
+                    len(this_ppm_x) != len(ppm_x) or
+                    len(this_ppm_y) != len(ppm_y) or
+                    np.max(this_ppm_x - ppm_x) > 1e-3 or
+                    np.max(this_ppm_y - ppm_y) > 1e-3
+                ):
+                    msg += "WARNING: Inconsistent chemical shift values."
+                    msg += " Interpolating chemical shift.\n"
+
+                    f = ip.RegularGridInterpolator(
+                        (this_ppm_x, this_ppm_y),
+                        xrr.T,
+                        bounds_error=False,
+                        fill_value=0.
+                    )
+                    xrr = f((ppm_xx, ppm_yy))
+
+                    if xri is not None:
+                        f = ip.RegularGridInterpolator(
+                            (this_ppm_x, this_ppm_y),
+                            xri.T,
+                            bounds_error=False,
+                            fill_value=0.
+                        )
+                        xri = f((ppm_xx, ppm_yy))
+
+                    if xir is not None:
+                        f = ip.RegularGridInterpolator(
+                            (this_ppm_x, this_ppm_y),
+                            xir.T,
+                            bounds_error=False,
+                            fill_value=0.
+                        )
+                        xir = f((ppm_xx, ppm_yy))
+
+                    if xii is not None:
+                        f = ip.RegularGridInterpolator(
+                            (this_ppm_x, this_ppm_y),
+                            xii.T,
+                            bounds_error=False,
+                            fill_value=0.
+                        )
+                        xii = f((ppm_xx, ppm_yy))
+
+            titles.append(title)
+            X_rr.append(xrr)
+            X_ri.append(xri)
+            X_ir.append(xir)
+            X_ii.append(xii)
             ws.append(wr)
-    
-    ppm_x = ppm_x0
-    ppm_y = ppm_y0
-    hz_x = hz_x0
-    hz_y = hz_y0
-    
+
     sorted_inds = np.argsort(ws)
-    
+
     sorted_ws = np.array([ws[i] for i in sorted_inds])
-    
-    sorted_X_rr = np.array([X_rr[i] for i in sorted_inds]).reshape(-1, len(ppm_y), len(ppm_x))
-    if load_imag:
-        sorted_X_ri = np.array([X_ri[i] for i in sorted_inds])
-        sorted_X_ir = np.array([X_ir[i] for i in sorted_inds])
-        sorted_X_ii = np.array([X_ii[i] for i in sorted_inds])
-    else:
-        sorted_X_ri = None
-        sorted_X_ir = None
-        sorted_X_ii = None
+    sorted_titles = [titles[i] for i in sorted_inds]
 
-    if return_titles:
-        sorted_titles = [titles[i] for i in sorted_inds]
-        return ppm_x, ppm_y, hz_x, hz_y, sorted_ws, sorted_X_rr, sorted_X_ri, sorted_X_ir, sorted_X_ii, sorted_titles
-    else:
-        return ppm_x, ppm_y, hz_x, hz_y, sorted_ws, sorted_X_rr, sorted_X_ri, sorted_X_ir, sorted_X_ii
+    sorted_X_rr = np.array([X_rr[i] for i in sorted_inds])
+    sorted_X_ri = np.array([X_ri[i] for i in sorted_inds])
+    sorted_X_ir = np.array([X_ir[i] for i in sorted_inds])
+    sorted_X_ii = np.array([X_ii[i] for i in sorted_inds])
 
+    return (
+        ppm_x,
+        ppm_y,
+        hz_x,
+        hz_y,
+        sorted_ws,
+        sorted_X_rr,
+        sorted_X_ri,
+        sorted_X_ir,
+        sorted_X_ii,
+        sorted_titles,
+        msg
+    )
 
 
 def prepare_2d_input(xrr, ws, data_pars, xri=None, xir=None, xii=None, xmax=0.5):
@@ -1249,7 +1515,7 @@ def prepare_2d_input(xrr, ws, data_pars, xri=None, xir=None, xii=None, xmax=0.5)
 
     if data_pars["encode_imag"]:
         X = torch.cat([X, torch.Tensor(xri).unsqueeze(0).unsqueeze(2), torch.Tensor(xir).unsqueeze(0).unsqueeze(2), torch.Tensor(xii).unsqueeze(0).unsqueeze(2)], dim=2)
-    
+
     # Normalize integrals
     X /= Xint[:, :, :, None, None]
     X /= torch.max(X[:, :, 0]) / xmax
