@@ -358,20 +358,10 @@ def get_chemical_shifts(td, sw, n_pts, offset, sf, bypass_errors=False):
 
     msg = ""
 
-    print(td)
-    print(sw)
-    print(n_pts)
-    print(offset)
-    print(sf)
-
     try:
         aq = td / (2 * sw)
         hz = offset * sf - np.arange(n_pts) / (2 * aq * n_pts / td)
         ppm = hz / sf
-
-        print(aq)
-        print(hz)
-        print(ppm)
 
     except Exception:
         msg = "Could not construct array of chemical shifts!\n"
