@@ -4,9 +4,9 @@ let predicting = false
 let predInd = 0
 
 let unit = 'ppm'
-let unitLabel = 'ppm'
+let is2 = ''
 
-let labels = {
+const labels = {
   ppm: 'Chemical shift [ppm]',
   Hz: 'Frequency [Hz]'
 }
@@ -49,7 +49,7 @@ function ShowSpectrum (n) {
 
   let ymax = 0
   for (let i = 0; i < data.length; i++) {
-    ymax = Math.max(ymax, Math.max(...data[i].yr))
+    ymax = Math.max(ymax, Math.max(...data[i]['yr' + is2]))
   }
 
   const disp = document.getElementById(`spectrum_fig${spectrumIndex + 1}`)
@@ -61,8 +61,8 @@ function ShowSpectrum (n) {
     Plotly.newPlot(
       disp,
       [{
-        x: data[spectrumIndex][unit],
-        y: data[spectrumIndex].yr.map(
+        x: data[spectrumIndex][unit + is2],
+        y: data[spectrumIndex]['yr' + is2].map(
           function (item) {
             return item / ymax
           }
@@ -74,7 +74,7 @@ function ShowSpectrum (n) {
           showline: true,
           range: [xmin, xmax],
           zeroline: false,
-          title: { text: labels[unitLabel] }
+          title: { text: labels[unit] }
         },
         yaxis: {
           showgrid: false,
@@ -115,20 +115,19 @@ function UpdateUnits () {
       const xmax = Number(rr.value)
 
       // Convert range and update unit
-      const imin = ClosestIndex(data[0][unit], xmin)
-      const imax = ClosestIndex(data[0][unit], xmax)
+      const imin = ClosestIndex(data[0][unit + is2], xmin)
+      const imax = ClosestIndex(data[0][unit + is2], xmax)
 
       unit = units[i].value
-      unitLabel = units[i].value
 
       if (document.getElementById('acqu2').checked) {
-        unit += '2'
+        is2 = '2'
       }
 
-      rl.value = Number(Math.round(data[0][unit][imin]))
-      rr.value = Number(Math.round(data[0][unit][imax]))
+      rl.value = Number(Math.round(data[0][unit + is2][imin]))
+      rr.value = Number(Math.round(data[0][unit + is2][imax]))
 
-      document.getElementById('range-unit').innerHTML = ` ${unitLabel} `
+      document.getElementById('range-unit').innerHTML = ` ${unit} `
 
       // Update plots
       ShowSpectrum(spectrumIndex)
@@ -169,7 +168,7 @@ function PlotPred (elem, n) {
     elem,
     [
       {
-        x: preds[unitLabel],
+        x: preds[unit],
         y: preds.specs[specIdx].map(
           function (item) {
             return item / Math.max(...preds.specs[specIdx])
@@ -179,13 +178,13 @@ function PlotPred (elem, n) {
         name: `${preds.wrs[specIdx]} KHz MAS spectrum`
       },
       {
-        x: preds[unitLabel],
+        x: preds[unit],
         y: predY,
         hoverinfo: 'x+y',
         name: 'Predicted PIP spectrum'
       },
       {
-        x: preds[unitLabel],
+        x: preds[unit],
         y: predYmax,
         fill: 'tonexty',
         type: 'scatter',
@@ -195,7 +194,7 @@ function PlotPred (elem, n) {
         showlegend: false
       },
       {
-        x: preds[unitLabel],
+        x: preds[unit],
         y: predYmin,
         fill: 'tonexty',
         type: 'scatter',
@@ -211,7 +210,7 @@ function PlotPred (elem, n) {
         showline: true,
         range: [xmin, xmax],
         zeroline: false,
-        title: { text: labels[unitLabel] }
+        title: { text: labels[unit] }
       },
       yaxis: {
         showgrid: false,
@@ -254,7 +253,7 @@ function PlotPredAll (elem, dy) {
     const col = c0.map((e, k) => e + dc[k] * i / (preds.specs.length - 1))
 
     specsToPlot.push({
-      x: preds[unitLabel],
+      x: preds[unit],
       y: preds.specs[i].map(function (item) { return y0 + (item / ymax) }),
       hoverinfo: 'x',
       name: `${preds.wrs[i]} KHz MAS spectrum`,
@@ -279,7 +278,7 @@ function PlotPredAll (elem, dy) {
 
   specsToPlot.push(
     {
-      x: preds[unitLabel],
+      x: preds[unit],
       y: predY,
       hoverinfo: 'x+y',
       name: 'Predicted PIP spectrum',
@@ -288,7 +287,7 @@ function PlotPredAll (elem, dy) {
   )
   specsToPlot.push(
     {
-      x: preds[unitLabel],
+      x: preds[unit],
       y: predYmax,
       fill: 'tonexty',
       type: 'scatter',
@@ -300,7 +299,7 @@ function PlotPredAll (elem, dy) {
   )
   specsToPlot.push(
     {
-      x: preds[unitLabel],
+      x: preds[unit],
       y: predYmin,
       fill: 'tonexty',
       type: 'scatter',
@@ -320,7 +319,7 @@ function PlotPredAll (elem, dy) {
         showline: true,
         range: [xmin, xmax],
         zeroline: false,
-        title: { text: labels[unitLabel] }
+        title: { text: labels[unit] }
       },
       yaxis: {
         showgrid: false,
@@ -684,7 +683,7 @@ function RunPrediction () {
   formData.append('rl', document.getElementById('rangel').value)
   formData.append('rr', document.getElementById('ranger').value)
   formData.append('sens', document.getElementById('sens').value)
-  formData.append('acqu2', document.getElementById('acqu2').checked)
+  formData.append('is2', is2 === '2')
   formData.append('units', unit)
 
   if (predicting) {

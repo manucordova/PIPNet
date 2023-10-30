@@ -26,7 +26,7 @@ torch.set_num_threads(os.cpu_count())
 model_name_1D = "PIPNet_model"
 model_name_2D = "PIPNet2D_model"
 device = "cuda" if torch.cuda.is_available() else "cpu"
-debug = False
+debug = True
 
 # Initialize the Flask app
 app = flk.Flask(__name__)
@@ -172,8 +172,8 @@ def load_dataset():
                 ppm2,
                 hz2,
                 _,
-                _,
-                _,
+                xrs2,
+                xis2,
                 _,
                 msg2
             ) = utils.extract_1d_dataset(
@@ -188,6 +188,8 @@ def load_dataset():
             if "ERROR" in msg2:
                 ppm2 = []
                 hz2 = []
+                xrs2 = []
+                xis2 = []
             else:
                 ppm2 = ppm2.tolist()
                 hz2 = hz2.tolist()
@@ -205,13 +207,24 @@ def load_dataset():
                 xis_plot = np.zeros_like(xrs)
             xis_plot /= norm[:, np.newaxis]
 
+            if len(xrs2) > 0 and xrs2[0] is not None:
+                norm2 = np.sum(xrs2, axis=1)
+                xrs2_plot = xrs2 / norm2[:, np.newaxis]
+                xis2_plot = xis2.copy()
+                if None in xis2_plot:
+                    xis2_plot = np.zeros_like(xrs2)
+                xis2_plot /= norm2[:, np.newaxis]
+
             spectra = []
-            for i, (w, xr, xi, title) in enumerate(zip(
+            for i, (w, xr, xi, xr2, xi2, title) in enumerate(zip(
                 ws,
                 xrs_plot,
                 xis_plot,
+                xrs2_plot,
+                xis2_plot,
                 titles
             )):
+
                 fig = px.line(x=ppm, y=xr)
                 fig.update_layout({"plot_bgcolor": "rgba(0,0,0,0)"})
                 spectra.append(
@@ -221,7 +234,9 @@ def load_dataset():
                         "Hz": hz.tolist(),
                         "Hz2": hz2,
                         "yr": xr.tolist(),
+                        "yr2": xr2.tolist(),
                         "yi": xi.tolist(),
+                        "yi2": xi2.tolist(),
                         "plot": json.dumps(
                             fig,
                             cls=plotly.utils.PlotlyJSONEncoder
@@ -256,7 +271,7 @@ def run_prediction():
         rl = float(flk.request.form["rl"])
         rr = float(flk.request.form["rr"])
         sens = float(flk.request.form["sens"])
-        acqu2 = flk.request.form["acqu2"] == "true"
+        is2 = flk.request.form["is2"] == "true"
         unit = flk.request.form["units"]
 
     # Load data
@@ -265,17 +280,12 @@ def run_prediction():
     ws = []
     for d in data:
         if d["include"]:
-            xr.append(d["yr"])
-            xi.append(d["yi"])
+            xr.append(d["yr" + ("2" if is2 else "")])
+            xi.append(d["yi" + ("2" if is2 else "")])
             ws.append(float(d["wr"])*1000)
 
-    if unit.endswith("2"):
-        ppm = np.array(d["ppm2"])
-        hz = np.array(d["Hz2"])
-
-    else:
-        ppm = np.array(d["ppm"])
-        hz = np.array(d["Hz"])
+    ppm = np.array(d["ppm" + ("2" if is2 else "")])
+    hz = np.array(d["Hz" + ("2" if is2 else "")])
 
     xr = np.array(xr)
     xi = np.array(xi)
@@ -283,7 +293,7 @@ def run_prediction():
     x_range = [rl, rr]
 
     # Perform prediction
-    if unit.startswith("ppm"):
+    if unit == "ppm":
         ppm_pred, hz_pred, X, msg = utils.prepare_1d_input(
             xr,
             ppm,
