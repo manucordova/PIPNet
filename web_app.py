@@ -214,6 +214,9 @@ def load_dataset():
                 if None in xis2_plot:
                     xis2_plot = np.zeros_like(xrs2)
                 xis2_plot /= norm2[:, np.newaxis]
+            else:
+                xrs2_plot = np.zeros_like(xrs)
+                xis2_plot = np.zeros_like(xrs)
 
             spectra = []
             for i, (w, xr, xi, xr2, xi2, title) in enumerate(zip(

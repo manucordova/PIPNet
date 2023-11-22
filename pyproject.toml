@@ -1,5 +1,6 @@
 [project]
 name = "pipnet"
+readme = "README.md"
 description = "Pure Isotropic NMR spectra using deep learning"
 version = "1.0.0"
 authors = [

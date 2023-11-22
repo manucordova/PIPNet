@@ -749,7 +749,7 @@ class Dataset(torch.utils.data.Dataset):
         # Normalize spectra
         iso, specs, brd_specs = self.normalize_spectra(iso, specs, brd_specs)
 
-        return self.finalize_spectra(iso, specs, brd_specs, ws, return_ws=return_ws)
+        return self.finalize_spectra(iso, specs, brd_specs, ws, return_ws=return_ws) 
 
 
 
